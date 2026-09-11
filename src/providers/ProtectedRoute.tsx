@@ -8,7 +8,9 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ element }: ProtectedRouteProps) => {
   const navigate = useNavigate();
 
-  const pknockAdminToken = "12345";
+  const pknockAdminToken = localStorage.getItem("pknockAdminToken");
+
+  // const pknockAdminToken = "12345";
   useEffect(() => {
     if (!pknockAdminToken) {
       navigate("/login", { replace: true });
