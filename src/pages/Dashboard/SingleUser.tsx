@@ -10,6 +10,20 @@ import {
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const KycActions = () => (
+    <div className="grid grid-cols-3 gap-2">
+        <button className="py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium rounded-lg">
+            Approve
+        </button>
+        <button className="py-2 bg-red-50 text-red-600 hover:bg-red-100 text-xs sm:text-sm font-medium rounded-lg">
+            Reject
+        </button>
+        <button className="py-2 bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs sm:text-sm font-medium rounded-lg">
+            Need Info
+        </button>
+    </div>
+);
+
 const SingleUser = () => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<"overview" | "inspections">(
@@ -22,24 +36,25 @@ const SingleUser = () => {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 px-6 py-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+            <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="flex items-start gap-3 sm:gap-4 min-w-0">
                         <button
                             onClick={() => navigate("/admin/users")}
-                            className="p-1.5 hover:bg-gray-100 rounded-lg"
+                            className="p-1.5 hover:bg-gray-100 rounded-lg flex-shrink-0"
+                            aria-label="Back to users"
                         >
                             <ArrowLeft size={20} className="text-gray-600" />
                         </button>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-start gap-3 min-w-0">
                             <img
                                 src="https://i.pravatar.cc/100?img=33"
                                 alt="Amara Okonkwo"
-                                className="w-12 h-12 rounded-full object-cover"
+                                className="w-12 h-12 rounded-full object-cover flex-shrink-0"
                             />
-                            <div>
-                                <div className="flex items-center gap-2">
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                     <h1 className="text-lg font-semibold text-gray-900">
                                         Amara Okonkwo
                                     </h1>
@@ -68,21 +83,21 @@ const SingleUser = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <button className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-lg">
+                    <div className="flex items-center gap-3 md:flex-shrink-0">
+                        <button className="flex-1 md:flex-none px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-lg">
                             Approve KYC
                         </button>
                         {isSuspended ? (
                             <button
                                 onClick={() => setShowReactivateModal(true)}
-                                className="px-4 py-2 border border-green-200 text-green-700 hover:bg-green-50 text-sm font-medium rounded-lg"
+                                className="flex-1 md:flex-none px-4 py-2 border border-green-200 text-green-700 hover:bg-green-50 text-sm font-medium rounded-lg"
                             >
                                 Reactivate
                             </button>
                         ) : (
                             <button
                                 onClick={() => setShowSuspendModal(true)}
-                                className="px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium rounded-lg flex items-center gap-1.5"
+                                className="flex-1 md:flex-none justify-center px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium rounded-lg flex items-center gap-1.5"
                             >
                                 <span>⊘</span> Suspend
                             </button>
@@ -90,25 +105,25 @@ const SingleUser = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-6 mt-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-1.5">
-                        <Mail size={16} /> amara@gmail.com
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-1.5 break-all">
+                        <Mail size={16} className="flex-shrink-0" /> amara@gmail.com
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <Phone size={16} /> +234 801 234 5678
+                        <Phone size={16} className="flex-shrink-0" /> +234 801 234 5678
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <MapPin size={16} /> Lagos Island, Victoria Island
+                        <MapPin size={16} className="flex-shrink-0" /> Lagos Island, Victoria Island
                     </div>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="px-6 pt-5">
-                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+            <div className="px-4 sm:px-6 pt-5">
+                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-full sm:w-fit">
                     <button
                         onClick={() => setActiveTab("overview")}
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === "overview"
+                        className={`flex-1 sm:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === "overview"
                             ? "bg-gray-900 text-white"
                             : "text-gray-600 hover:text-gray-900"
                             }`}
@@ -117,7 +132,7 @@ const SingleUser = () => {
                     </button>
                     <button
                         onClick={() => setActiveTab("inspections")}
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === "inspections"
+                        className={`flex-1 sm:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === "inspections"
                             ? "bg-gray-900 text-white"
                             : "text-gray-600 hover:text-gray-900"
                             }`}
@@ -128,13 +143,13 @@ const SingleUser = () => {
             </div>
 
             {/* Content */}
-            <div className="px-6 py-5">
+            <div className="px-4 sm:px-6 py-5">
                 {activeTab === "overview" && (
-                    <div className="grid grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-3 xl:gap-6">
                         {/* Left – Personal info + Activity */}
-                        <div className="col-span-2 space-y-5">
-                            <div className="bg-white rounded-xl border border-gray-200 p-6">
-                                <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                        <div className="xl:col-span-2 space-y-5 min-w-0">
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
                                     <div>
                                         <p className="text-sm text-gray-500">First Name</p>
                                         <p className="font-medium text-gray-900 mt-0.5">Adewale</p>
@@ -143,9 +158,9 @@ const SingleUser = () => {
                                         <p className="text-sm text-gray-500">Last Name</p>
                                         <p className="font-medium text-gray-900 mt-0.5">Okonkwo</p>
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <p className="text-sm text-gray-500">Email Address</p>
-                                        <p className="font-medium text-gray-900 mt-0.5">
+                                        <p className="font-medium text-gray-900 mt-0.5 break-all">
                                             adewale@example.com
                                         </p>
                                     </div>
@@ -177,7 +192,7 @@ const SingleUser = () => {
                                         <p className="text-sm text-gray-500">Nationality</p>
                                         <p className="font-medium text-gray-900 mt-0.5">Nigeria</p>
                                     </div>
-                                    <div className="col-span-2">
+                                    <div className="sm:col-span-2">
                                         <p className="text-sm text-gray-500">Residential Address</p>
                                         <p className="font-medium text-gray-900 mt-0.5">
                                             14 Adeola Hopewell, Victoria Island, Lagos
@@ -193,7 +208,7 @@ const SingleUser = () => {
                             </div>
 
                             {/* Activity Log */}
-                            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
                                 <h3 className="font-semibold text-gray-900 mb-4">
                                     Activity Log
                                 </h3>
@@ -218,13 +233,15 @@ const SingleUser = () => {
                                     ].map((item, i) => (
                                         <div key={i} className="flex gap-3">
                                             <div className="mt-1.5 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                                            <div className="flex-1">
+                                            <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-gray-900">
                                                     {item.title}
                                                 </p>
                                                 <p className="text-xs text-gray-500">{item.desc}</p>
                                             </div>
-                                            <p className="text-xs text-gray-400">2 hrs ago</p>
+                                            <p className="text-xs text-gray-400 whitespace-nowrap">
+                                                2 hrs ago
+                                            </p>
                                         </div>
                                     ))}
                                 </div>
@@ -232,10 +249,10 @@ const SingleUser = () => {
                         </div>
 
                         {/* Right – KYC sections */}
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-1">
                             {/* Email */}
-                            <div className="bg-white rounded-xl border border-gray-200 p-5">
-                                <div className="flex items-center justify-between mb-3">
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
+                                <div className="flex items-center justify-between gap-2 mb-3">
                                     <div className="flex items-center gap-2">
                                         <CheckCircle2 size={18} className="text-green-600" />
                                         <span className="font-medium text-gray-900">
@@ -247,14 +264,14 @@ const SingleUser = () => {
                                     </span>
                                 </div>
                                 <p className="text-sm text-gray-500">Verified via OTP</p>
-                                <p className="text-sm font-medium text-gray-900 mt-1">
+                                <p className="text-sm font-medium text-gray-900 mt-1 break-all">
                                     adewale@example.com
                                 </p>
                             </div>
 
                             {/* Government ID */}
-                            <div className="bg-white rounded-xl border border-gray-200 p-5">
-                                <div className="flex items-center justify-between mb-3">
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
+                                <div className="flex items-center justify-between gap-2 mb-3">
                                     <div className="flex items-center gap-2">
                                         <CheckCircle2 size={18} className="text-blue-600" />
                                         <span className="font-medium text-gray-900">
@@ -279,22 +296,12 @@ const SingleUser = () => {
                                     alt="ID Card"
                                     className="w-full rounded-lg border border-gray-200 mb-4"
                                 />
-                                <div className="flex gap-2">
-                                    <button className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">
-                                        Approve
-                                    </button>
-                                    <button className="flex-1 py-2 bg-red-50 text-red-600 hover:bg-red-100 text-sm font-medium rounded-lg">
-                                        Reject
-                                    </button>
-                                    <button className="flex-1 py-2 bg-amber-50 text-amber-700 hover:bg-amber-100 text-sm font-medium rounded-lg">
-                                        Need Info
-                                    </button>
-                                </div>
+                                <KycActions />
                             </div>
 
                             {/* Photo */}
-                            <div className="bg-white rounded-xl border border-gray-200 p-5">
-                                <div className="flex items-center justify-between mb-3">
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 md:col-span-2 xl:col-span-1">
+                                <div className="flex items-center justify-between gap-2 mb-3">
                                     <div className="flex items-center gap-2">
                                         <CheckCircle2 size={18} className="text-blue-600" />
                                         <span className="font-medium text-gray-900">Photo</span>
@@ -313,16 +320,8 @@ const SingleUser = () => {
                                     alt="User photo"
                                     className="w-full max-w-[200px] mx-auto rounded-lg border border-gray-200 mb-4"
                                 />
-                                <div className="flex gap-2">
-                                    <button className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">
-                                        Approve
-                                    </button>
-                                    <button className="flex-1 py-2 bg-red-50 text-red-600 hover:bg-red-100 text-sm font-medium rounded-lg">
-                                        Reject
-                                    </button>
-                                    <button className="flex-1 py-2 bg-amber-50 text-amber-700 hover:bg-amber-100 text-sm font-medium rounded-lg">
-                                        Need Info
-                                    </button>
+                                <div className="md:max-w-sm md:mx-auto xl:max-w-none">
+                                    <KycActions />
                                 </div>
                             </div>
                         </div>
@@ -330,7 +329,7 @@ const SingleUser = () => {
                 )}
 
                 {activeTab === "inspections" && (
-                    <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 sm:p-8 text-center text-gray-500">
                         Inspections list for this user will appear here.
                     </div>
                 )}
@@ -339,7 +338,7 @@ const SingleUser = () => {
             {/* Suspend Modal */}
             {showSuspendModal && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl w-full max-w-md shadow-xl p-6">
+                    <div className="bg-white rounded-xl w-full max-w-md shadow-xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
                         <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <span className="text-2xl text-red-600">⊘</span>
                         </div>
@@ -359,7 +358,7 @@ const SingleUser = () => {
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
                             />
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex flex-col-reverse gap-3 sm:flex-row">
                             <button
                                 onClick={() => setShowSuspendModal(false)}
                                 className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
@@ -383,7 +382,7 @@ const SingleUser = () => {
             {/* Reactivate Modal */}
             {showReactivateModal && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl w-full max-w-md shadow-xl p-6">
+                    <div className="bg-white rounded-xl w-full max-w-md shadow-xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
                         <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <span className="text-2xl text-green-600">👍</span>
                         </div>
@@ -404,7 +403,7 @@ const SingleUser = () => {
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
                             />
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex flex-col-reverse gap-3 sm:flex-row">
                             <button
                                 onClick={() => setShowReactivateModal(false)}
                                 className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"

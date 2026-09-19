@@ -76,15 +76,15 @@ const SinglePropertyOwners = () => {
 
             {/* Header */}
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                <div className="flex items-start gap-4">
+                <div className="flex min-w-0 items-start gap-3 sm:gap-4">
                     <img
                         src="https://i.pravatar.cc/96?img=51"
                         alt="Mr. Emeka Adeyemi"
-                        className="h-16 w-16 rounded-2xl object-cover"
+                        className="h-14 w-14 flex-shrink-0 rounded-2xl object-cover sm:h-16 sm:w-16"
                     />
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-lg font-extrabold text-slate-900">Mr. Emeka Adeyemi</h1>
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <h1 className="text-base font-extrabold text-slate-900 sm:text-lg">Mr. Emeka Adeyemi</h1>
                             <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
                                 Verified
                             </span>
@@ -93,19 +93,19 @@ const SinglePropertyOwners = () => {
                         <p className="mt-1 flex items-center gap-1 text-xs text-amber-500">
                             <Star size={12} className="fill-amber-400 text-amber-400" /> 4.9 rating
                         </p>
-                        <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                            <span className="flex items-center gap-1.5">
-                                <Mail size={13} /> emeka@nwosu.com
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
+                            <span className="flex items-center gap-1.5 break-all">
+                                <Mail size={13} className="flex-shrink-0" /> emeka@nwosu.com
                             </span>
                             <span className="flex items-center gap-1.5">
-                                <Phone size={13} /> +234 811 111 2222
+                                <Phone size={13} className="flex-shrink-0" /> +234 811 111 2222
                             </span>
                         </div>
                     </div>
                 </div>
                 <button
                     type="button"
-                    className="flex h-fit items-center gap-1.5 rounded-xl border border-rose-100 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-100"
+                    className="flex h-fit w-full items-center justify-center gap-1.5 rounded-xl border border-rose-100 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-100 sm:w-auto sm:flex-shrink-0"
                 >
                     <Ban size={14} /> Suspend
                 </button>
@@ -113,15 +113,19 @@ const SinglePropertyOwners = () => {
 
             {/* Stats */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                {stats.map((s) => (
-                    <div key={s.label} className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <div className="flex items-start justify-between">
+                {stats.map((s, i) => (
+                    <div
+                        key={s.label}
+                        className={`flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${i === 0 ? 'col-span-2 sm:col-span-1' : ''
+                            }`}
+                    >
+                        <div className="flex items-start justify-between gap-2">
                             <p className="text-xs text-slate-500">{s.label}</p>
-                            <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${s.iconBg} ${s.iconColor}`}>
+                            <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${s.iconBg} ${s.iconColor}`}>
                                 <s.icon size={16} />
                             </span>
                         </div>
-                        <p className="mt-2 text-xl font-bold text-slate-900">{s.value}</p>
+                        <p className="mt-2 break-words text-lg font-bold text-slate-900 sm:text-xl">{s.value}</p>
                     </div>
                 ))}
             </div>
@@ -144,20 +148,20 @@ const SinglePropertyOwners = () => {
             {/* Overview */}
             {activeTab === 'Overview' && (
                 <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
                         <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
                             {personalDetails.map((d) => (
-                                <div key={d.label}>
+                                <div key={d.label} className="min-w-0">
                                     <p className="text-xs text-slate-400">{d.label}</p>
-                                    <p className="mt-1 text-sm font-semibold text-slate-900">{d.value}</p>
+                                    <p className="mt-1 break-words text-sm font-semibold text-slate-900">{d.value}</p>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    <div className="space-y-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                            <div className="flex items-center justify-between">
+                    <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-1">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                            <div className="flex items-center justify-between gap-2">
                                 <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
                                     <CheckCircle2 size={16} className="text-slate-900" /> Email Address
                                 </h3>
@@ -166,11 +170,11 @@ const SinglePropertyOwners = () => {
                                 </span>
                             </div>
                             <p className="mt-3 text-xs text-slate-400">Verified via OTP</p>
-                            <p className="mt-1 text-sm font-semibold text-slate-900">adewale@example.com</p>
+                            <p className="mt-1 break-all text-sm font-semibold text-slate-900">adewale@example.com</p>
                         </div>
 
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                            <div className="flex items-center justify-between">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                            <div className="flex items-center justify-between gap-2">
                                 <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
                                     <ShieldCheck size={16} className="text-blue-600" /> KYC / Identity
                                 </h3>
@@ -178,9 +182,9 @@ const SinglePropertyOwners = () => {
                                     Pending
                                 </span>
                             </div>
-                            <button type="button" className="mt-3 flex w-full items-center justify-between text-xs text-slate-400">
+                            <button type="button" className="mt-3 flex w-full items-center justify-between gap-2 text-left text-xs text-slate-400">
                                 Identity documents submitted for review
-                                <ChevronDown size={14} />
+                                <ChevronDown size={14} className="flex-shrink-0" />
                             </button>
                             <p className="mt-2 text-sm font-semibold text-slate-900">National Identity Card</p>
                             <img
@@ -206,8 +210,9 @@ const SinglePropertyOwners = () => {
 
             {/* Properties */}
             {activeTab === 'Properties' && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="overflow-x-auto">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                    {/* Desktop table */}
+                    <div className="hidden overflow-x-auto md:block">
                         <table className="w-full min-w-[760px] border-collapse">
                             <thead>
                                 <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-500">
@@ -231,9 +236,9 @@ const SinglePropertyOwners = () => {
                                         <td className="py-4 pr-4">
                                             <span className="rounded-full border border-slate-200 px-2.5 py-1 text-slate-600">{p.type}</span>
                                         </td>
-                                        <td className="py-4 pr-4 font-medium text-slate-900">{p.price}</td>
+                                        <td className="whitespace-nowrap py-4 pr-4 font-medium text-slate-900">{p.price}</td>
                                         <td className="py-4 pr-4">
-                                            <span className={`rounded-full px-2.5 py-1 font-medium ${statusStyles[p.status]}`}>{p.status}</span>
+                                            <span className={`whitespace-nowrap rounded-full px-2.5 py-1 font-medium ${statusStyles[p.status]}`}>{p.status}</span>
                                         </td>
                                         <td className="py-4 pr-4 whitespace-nowrap text-slate-500">{p.submitted}</td>
                                         <td className="py-4">
@@ -247,7 +252,49 @@ const SinglePropertyOwners = () => {
                         </table>
                     </div>
 
-                    <div className="mt-5 flex items-center justify-between">
+                    {/* Mobile cards */}
+                    <div className="grid grid-cols-1 gap-3 md:hidden">
+                        {ownerProperties.map((p) => (
+                            <div key={p.id} className="rounded-xl border border-slate-200 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-slate-900">{p.title}</p>
+                                        <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                                            <MapPin size={12} className="flex-shrink-0" /> {p.location}
+                                        </p>
+                                    </div>
+                                    <span className="flex-shrink-0 rounded-full border border-slate-200 px-2.5 py-1 text-xs text-slate-600">
+                                        {p.type}
+                                    </span>
+                                </div>
+
+                                <div className="mt-3">
+                                    <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[p.status]}`}>
+                                        {p.status}
+                                    </span>
+                                </div>
+
+                                <dl className="mt-3 space-y-1.5 text-xs">
+                                    <div className="flex justify-between gap-4">
+                                        <dt className="text-slate-400">Price/Yr</dt>
+                                        <dd className="font-medium text-slate-900">{p.price}</dd>
+                                    </div>
+                                    <div className="flex justify-between gap-4">
+                                        <dt className="text-slate-400">Submitted</dt>
+                                        <dd className="text-slate-500">{p.submitted}</dd>
+                                    </div>
+                                </dl>
+
+                                <div className="mt-4 border-t border-slate-100 pt-3 text-xs">
+                                    <a href={`/admin/properties/${p.id}`} className="font-medium text-blue-600 hover:text-blue-700">
+                                        View
+                                    </a>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="mt-5 flex items-center justify-between gap-3">
                         <p className="text-xs text-slate-400">1 of 10 pages</p>
                         <div className="flex items-center gap-2">
                             {[1, 2, 3].map((page) => (
@@ -267,11 +314,11 @@ const SinglePropertyOwners = () => {
 
             {/* Bank */}
             {activeTab === 'Bank' && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:max-w-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:max-w-sm sm:p-5">
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                         <Landmark size={18} />
                     </span>
-                    <div className="mt-4 flex items-center justify-between">
+                    <div className="mt-4 flex items-center justify-between gap-3">
                         <div>
                             <p className="text-sm font-semibold text-slate-900">&bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; 3421</p>
                             <p className="mt-1 text-xs text-slate-400">Adewale Okonkwo</p>
@@ -281,11 +328,11 @@ const SinglePropertyOwners = () => {
                             <p className="text-sm font-semibold text-slate-900">Guaranty Trust Bank</p>
                         </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-xs">
+                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4 text-xs">
                         <span className="text-slate-400">Verified On</span>
                         <span className="font-semibold text-slate-900">May 14, 2026</span>
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-xs">
+                    <div className="mt-2 flex items-center justify-between gap-3 text-xs">
                         <span className="text-slate-400">Last Payout</span>
                         <span className="font-semibold text-slate-900">Jun 28, 2026 &bull; ₦617,500</span>
                     </div>

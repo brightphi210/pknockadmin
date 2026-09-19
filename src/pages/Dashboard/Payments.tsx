@@ -200,13 +200,26 @@ const StatusBadge = ({ status }: { status: string }) => {
     };
     return (
         <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] || "bg-gray-100 text-gray-600"
+            className={`inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] || "bg-gray-100 text-gray-600"
                 }`}
         >
             {status}
         </span>
     );
 };
+
+const Row = ({
+    label,
+    children,
+}: {
+    label: string;
+    children: React.ReactNode;
+}) => (
+    <div className="flex items-start justify-between gap-4">
+        <dt className="text-gray-500 flex-shrink-0">{label}</dt>
+        <dd className="text-gray-900 text-right min-w-0 break-words">{children}</dd>
+    </div>
+);
 
 const Payments = () => {
     const [activeTab, setActiveTab] = useState<"rental" | "withdrawals">("rental");
@@ -229,23 +242,25 @@ const Payments = () => {
             ];
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
+        <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-5 sm:mb-6">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Payments</h1>
+                    <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
+                        Payments
+                    </h1>
                     <p className="text-sm text-gray-500 mt-1">
                         Platform transaction monitoring
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <select className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+                <div className="grid grid-cols-2 gap-3 md:flex md:items-center">
+                    <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
                         <option>All Status</option>
                         <option>Successful</option>
                         <option>Pending</option>
                         <option>Failed</option>
                     </select>
-                    <select className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+                    <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
                         <option>Last 30 days</option>
                         <option>Last 7 days</option>
                         <option>This month</option>
@@ -254,27 +269,30 @@ const Payments = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-5 gap-4 mb-6">
-                {stats.map((stat) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-5 sm:mb-6">
+                {stats.map((stat, i) => (
                     <div
                         key={stat.label}
-                        className="bg-white rounded-xl border border-gray-200 p-4"
+                        className={`bg-white rounded-xl border border-gray-200 p-4 ${i === stats.length - 1 ? "col-span-2 sm:col-span-1" : ""
+                            }`}
                     >
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center justify-between gap-2 mb-2">
                             <p className="text-sm text-gray-500">{stat.label}</p>
                             <span className="text-lg">{stat.icon}</span>
                         </div>
-                        <p className="text-xl font-semibold text-gray-900">{stat.value}</p>
+                        <p className="text-lg sm:text-xl font-semibold text-gray-900">
+                            {stat.value}
+                        </p>
                         <p className="text-xs text-green-600 mt-1">↑ +8.4% vs last month</p>
                     </div>
                 ))}
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit mb-5">
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-full sm:w-fit mb-5">
                 <button
                     onClick={() => setActiveTab("rental")}
-                    className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${activeTab === "rental"
+                    className={`flex-1 sm:flex-none justify-center px-4 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${activeTab === "rental"
                         ? "bg-gray-900 text-white"
                         : "text-gray-600 hover:text-gray-900"
                         }`}
@@ -289,7 +307,7 @@ const Payments = () => {
                 </button>
                 <button
                     onClick={() => setActiveTab("withdrawals")}
-                    className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${activeTab === "withdrawals"
+                    className={`flex-1 sm:flex-none justify-center px-4 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${activeTab === "withdrawals"
                         ? "bg-gray-900 text-white"
                         : "text-gray-600 hover:text-gray-900"
                         }`}
@@ -308,8 +326,8 @@ const Payments = () => {
 
             {/* Table Card */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                    <div className="relative max-w-md">
+                <div className="p-4 border-b border-gray-100 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="relative w-full lg:max-w-md">
                         <Search
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                             size={18}
@@ -320,7 +338,7 @@ const Payments = () => {
                             className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="grid grid-cols-2 gap-3 lg:flex lg:items-center">
                         <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600">
                             <Calendar size={16} />
                             From
@@ -333,94 +351,179 @@ const Payments = () => {
                 </div>
 
                 {activeTab === "rental" ? (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-gray-50 text-left text-gray-500 font-medium">
-                                    <th className="px-5 py-3">Transaction ID</th>
-                                    <th className="px-5 py-3">User</th>
-                                    <th className="px-5 py-3">Property</th>
-                                    <th className="px-5 py-3">Owner</th>
-                                    <th className="px-5 py-3">Amount</th>
-                                    <th className="px-5 py-3">Platform Fees</th>
-                                    <th className="px-5 py-3">Owner Payout</th>
-                                    <th className="px-5 py-3">Status</th>
-                                    <th className="px-5 py-3">Date & Time</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {rentalPayments.map((row) => (
-                                    <tr key={row.id} className="hover:bg-gray-50">
-                                        <td className="px-5 py-3.5 font-medium text-gray-900">
-                                            {row.id}
-                                        </td>
-                                        <td className="px-5 py-3.5 text-gray-700">{row.user}</td>
-                                        <td className="px-5 py-3.5">
-                                            <p className="text-gray-900 truncate max-w-[180px]">
-                                                {row.property}
-                                            </p>
-                                        </td>
-                                        <td className="px-5 py-3.5 text-gray-700">{row.owner}</td>
-                                        <td className="px-5 py-3.5 font-medium text-gray-900">
-                                            {row.amount}
-                                        </td>
-                                        <td className="px-5 py-3.5 text-gray-600">{row.fee}</td>
-                                        <td className="px-5 py-3.5 text-gray-700">{row.payout}</td>
-                                        <td className="px-5 py-3.5">
-                                            <StatusBadge status={row.status} />
-                                        </td>
-                                        <td className="px-5 py-3.5 text-gray-500">{row.date}</td>
+                    <>
+                        {/* Desktop table */}
+                        <div className="hidden lg:block overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-gray-50 text-left text-gray-500 font-medium whitespace-nowrap">
+                                        <th className="px-5 py-3">Transaction ID</th>
+                                        <th className="px-5 py-3">User</th>
+                                        <th className="px-5 py-3">Property</th>
+                                        <th className="px-5 py-3">Owner</th>
+                                        <th className="px-5 py-3">Amount</th>
+                                        <th className="px-5 py-3">Platform Fees</th>
+                                        <th className="px-5 py-3">Owner Payout</th>
+                                        <th className="px-5 py-3">Status</th>
+                                        <th className="px-5 py-3">Date & Time</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {rentalPayments.map((row) => (
+                                        <tr key={row.id} className="hover:bg-gray-50">
+                                            <td className="px-5 py-3.5 font-medium text-gray-900 whitespace-nowrap">
+                                                {row.id}
+                                            </td>
+                                            <td className="px-5 py-3.5 text-gray-700 whitespace-nowrap">
+                                                {row.user}
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <p className="text-gray-900 truncate max-w-[180px]">
+                                                    {row.property}
+                                                </p>
+                                            </td>
+                                            <td className="px-5 py-3.5 text-gray-700 whitespace-nowrap">
+                                                {row.owner}
+                                            </td>
+                                            <td className="px-5 py-3.5 font-medium text-gray-900 whitespace-nowrap">
+                                                {row.amount}
+                                            </td>
+                                            <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">
+                                                {row.fee}
+                                            </td>
+                                            <td className="px-5 py-3.5 text-gray-700 whitespace-nowrap">
+                                                {row.payout}
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <StatusBadge status={row.status} />
+                                            </td>
+                                            <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">
+                                                {row.date}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile / tablet cards */}
+                        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:hidden">
+                            {rentalPayments.map((row) => (
+                                <div
+                                    key={row.id}
+                                    className="rounded-xl border border-gray-200 p-4"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <p className="font-medium text-gray-900 text-sm">{row.id}</p>
+                                        <StatusBadge status={row.status} />
+                                    </div>
+                                    <p className="mt-2 text-sm text-gray-900">{row.property}</p>
+                                    <dl className="mt-3 space-y-1.5 text-sm">
+                                        <Row label="User">{row.user}</Row>
+                                        <Row label="Owner">{row.owner}</Row>
+                                        <Row label="Amount">
+                                            <span className="font-medium">{row.amount}</span>
+                                        </Row>
+                                        <Row label="Platform fee">{row.fee}</Row>
+                                        <Row label="Owner payout">{row.payout}</Row>
+                                    </dl>
+                                    <p className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
+                                        {row.date}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-gray-50 text-left text-gray-500 font-medium">
-                                    <th className="px-5 py-3">Withdrawal ID</th>
-                                    <th className="px-5 py-3">Owner</th>
-                                    <th className="px-5 py-3">Property</th>
-                                    <th className="px-5 py-3">Bank</th>
-                                    <th className="px-5 py-3">Amount</th>
-                                    <th className="px-5 py-3">Transfer Fees</th>
-                                    <th className="px-5 py-3">Net Disbursed</th>
-                                    <th className="px-5 py-3">Status</th>
-                                    <th className="px-5 py-3">Date & Time</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {withdrawals.map((row) => (
-                                    <tr key={row.id} className="hover:bg-gray-50">
-                                        <td className="px-5 py-3.5 font-medium text-gray-900">
-                                            {row.id}
-                                        </td>
-                                        <td className="px-5 py-3.5 text-gray-700">{row.owner}</td>
-                                        <td className="px-5 py-3.5">
-                                            <p className="text-gray-900 truncate max-w-[180px]">
-                                                {row.property}
-                                            </p>
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <p className="text-gray-900">{row.bank}</p>
-                                            <p className="text-xs text-gray-500">{row.account}</p>
-                                        </td>
-                                        <td className="px-5 py-3.5 font-medium text-gray-900">
-                                            {row.amount}
-                                        </td>
-                                        <td className="px-5 py-3.5 text-gray-600">{row.fee}</td>
-                                        <td className="px-5 py-3.5 text-gray-700">{row.net}</td>
-                                        <td className="px-5 py-3.5">
-                                            <StatusBadge status={row.status} />
-                                        </td>
-                                        <td className="px-5 py-3.5 text-gray-500">{row.date}</td>
+                    <>
+                        {/* Desktop table */}
+                        <div className="hidden lg:block overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-gray-50 text-left text-gray-500 font-medium whitespace-nowrap">
+                                        <th className="px-5 py-3">Withdrawal ID</th>
+                                        <th className="px-5 py-3">Owner</th>
+                                        <th className="px-5 py-3">Property</th>
+                                        <th className="px-5 py-3">Bank</th>
+                                        <th className="px-5 py-3">Amount</th>
+                                        <th className="px-5 py-3">Transfer Fees</th>
+                                        <th className="px-5 py-3">Net Disbursed</th>
+                                        <th className="px-5 py-3">Status</th>
+                                        <th className="px-5 py-3">Date & Time</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {withdrawals.map((row) => (
+                                        <tr key={row.id} className="hover:bg-gray-50">
+                                            <td className="px-5 py-3.5 font-medium text-gray-900 whitespace-nowrap">
+                                                {row.id}
+                                            </td>
+                                            <td className="px-5 py-3.5 text-gray-700 whitespace-nowrap">
+                                                {row.owner}
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <p className="text-gray-900 truncate max-w-[180px]">
+                                                    {row.property}
+                                                </p>
+                                            </td>
+                                            <td className="px-5 py-3.5 whitespace-nowrap">
+                                                <p className="text-gray-900">{row.bank}</p>
+                                                <p className="text-xs text-gray-500">{row.account}</p>
+                                            </td>
+                                            <td className="px-5 py-3.5 font-medium text-gray-900 whitespace-nowrap">
+                                                {row.amount}
+                                            </td>
+                                            <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">
+                                                {row.fee}
+                                            </td>
+                                            <td className="px-5 py-3.5 text-gray-700 whitespace-nowrap">
+                                                {row.net}
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <StatusBadge status={row.status} />
+                                            </td>
+                                            <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">
+                                                {row.date}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile / tablet cards */}
+                        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:hidden">
+                            {withdrawals.map((row) => (
+                                <div
+                                    key={row.id}
+                                    className="rounded-xl border border-gray-200 p-4"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <p className="font-medium text-gray-900 text-sm">{row.id}</p>
+                                        <StatusBadge status={row.status} />
+                                    </div>
+                                    <p className="mt-2 text-sm text-gray-900">{row.property}</p>
+                                    <dl className="mt-3 space-y-1.5 text-sm">
+                                        <Row label="Owner">{row.owner}</Row>
+                                        <Row label="Bank">
+                                            {row.bank}
+                                            <span className="block text-xs text-gray-500">
+                                                {row.account}
+                                            </span>
+                                        </Row>
+                                        <Row label="Amount">
+                                            <span className="font-medium">{row.amount}</span>
+                                        </Row>
+                                        <Row label="Transfer fee">{row.fee}</Row>
+                                        <Row label="Net disbursed">{row.net}</Row>
+                                    </dl>
+                                    <p className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
+                                        {row.date}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
         </div>

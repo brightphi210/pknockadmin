@@ -112,7 +112,7 @@ const KycBadge = ({ status }: { status: string }) => {
     };
     return (
         <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] || "bg-gray-100 text-gray-600"
+            className={`inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] || "bg-gray-100 text-gray-600"
                 }`}
         >
             {status}
@@ -120,14 +120,32 @@ const KycBadge = ({ status }: { status: string }) => {
     );
 };
 
+const Row = ({
+    label,
+    children,
+}: {
+    label: string;
+    children: React.ReactNode;
+}) => (
+    <div className="flex items-start justify-between gap-4">
+        <dt className="text-gray-500 flex-shrink-0">{label}</dt>
+        <dd className="text-gray-700 text-right min-w-0 break-words">{children}</dd>
+    </div>
+);
+
 const Users = () => {
     const navigate = useNavigate();
     const [search, setSearch] = useState("");
 
+    const viewUser = (id: string) =>
+        navigate(`/admin/users/${id.replace(/\s/g, "")}`);
+
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
-            <div className="mb-6">
-                <h1 className="text-2xl font-semibold text-gray-900">Users</h1>
+        <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+            <div className="mb-5 sm:mb-6">
+                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
+                    Users
+                </h1>
                 <p className="text-sm text-gray-500 mt-1">
                     All registered users on the platform
                 </p>
@@ -135,7 +153,7 @@ const Users = () => {
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-gray-100">
-                    <div className="relative max-w-md">
+                    <div className="relative w-full md:max-w-md">
                         <Search
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                             size={18}
@@ -150,10 +168,11 @@ const Users = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                {/* Desktop table */}
+                <div className="hidden lg:block overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="bg-gray-50 text-left text-gray-500 font-medium">
+                            <tr className="bg-gray-50 text-left text-gray-500 font-medium whitespace-nowrap">
                                 <th className="px-6 py-3">User ID</th>
                                 <th className="px-6 py-3">Name</th>
                                 <th className="px-6 py-3">Email</th>
@@ -167,15 +186,19 @@ const Users = () => {
                         <tbody className="divide-y divide-gray-100">
                             {users.map((user) => (
                                 <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                                         {user.id}
                                     </td>
-                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                                         {user.name}
                                     </td>
                                     <td className="px-6 py-4 text-gray-600">{user.email}</td>
-                                    <td className="px-6 py-4 text-gray-600">{user.phone}</td>
-                                    <td className="px-6 py-4 text-gray-600">{user.registered}</td>
+                                    <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
+                                        {user.phone}
+                                    </td>
+                                    <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
+                                        {user.registered}
+                                    </td>
                                     <td className="px-6 py-4 text-center text-gray-700">
                                         {user.inspections}
                                     </td>
@@ -185,9 +208,7 @@ const Users = () => {
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <button
-                                                onClick={() =>
-                                                    navigate(`/admin/users/${user.id.replace(/\s/g, "")}`)
-                                                }
+                                                onClick={() => viewUser(user.id)}
                                                 className="text-blue-600 hover:text-blue-700 font-medium"
                                             >
                                                 View
@@ -203,7 +224,48 @@ const Users = () => {
                     </table>
                 </div>
 
-                <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                {/* Mobile / tablet cards */}
+                <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:hidden">
+                    {users.map((user) => (
+                        <div
+                            key={user.id}
+                            className="rounded-xl border border-gray-200 p-4"
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="font-medium text-gray-900 truncate">
+                                        {user.name}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-0.5">{user.id}</p>
+                                </div>
+                                <KycBadge status={user.kyc} />
+                            </div>
+
+                            <dl className="mt-3 space-y-1.5 text-sm">
+                                <Row label="Email">
+                                    <span className="break-all">{user.email}</span>
+                                </Row>
+                                <Row label="Phone">{user.phone}</Row>
+                                <Row label="Registered">{user.registered}</Row>
+                                <Row label="Inspections">{user.inspections}</Row>
+                            </dl>
+
+                            <div className="mt-4 flex items-center gap-5 border-t border-gray-100 pt-3 text-sm">
+                                <button
+                                    onClick={() => viewUser(user.id)}
+                                    className="text-blue-600 hover:text-blue-700 font-medium"
+                                >
+                                    View
+                                </button>
+                                <button className="text-red-600 hover:text-red-700 font-medium">
+                                    Suspend
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
                     <p className="text-sm text-gray-500">1 of 10 pages</p>
                     <div className="flex items-center gap-1">
                         <button className="w-8 h-8 rounded-md bg-gray-900 text-white text-sm font-medium">

@@ -49,11 +49,11 @@ const PropertyOwners = () => {
     return (
         <div className="space-y-4 p-4 sm:p-6 lg:p-8">
             <div>
-                <h1 className="text-2xl font-extrabold text-slate-900">Property Owners</h1>
+                <h1 className="text-xl font-extrabold text-slate-900 sm:text-2xl">Property Owners</h1>
                 <p className="mt-1 text-xs text-slate-500">64 registered property owners</p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="relative w-full sm:max-w-xs">
                     <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
@@ -64,7 +64,8 @@ const PropertyOwners = () => {
                     />
                 </div>
 
-                <div className="mt-5 overflow-x-auto">
+                {/* Desktop table */}
+                <div className="mt-5 hidden overflow-x-auto lg:block">
                     <table className="w-full min-w-[900px] border-collapse">
                         <thead>
                             <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-500">
@@ -82,15 +83,15 @@ const PropertyOwners = () => {
                         <tbody className="divide-y divide-slate-100">
                             {filtered.map((o) => (
                                 <tr key={o.id} className="text-xs">
-                                    <td className="py-4 pr-4 text-sm font-semibold text-slate-900">{o.name}</td>
+                                    <td className="whitespace-nowrap py-4 pr-4 text-sm font-semibold text-slate-900">{o.name}</td>
                                     <td className="py-4 pr-4">
-                                        <span className={`rounded-full px-2.5 py-1 font-medium ${kycStyles[o.kyc]}`}>{o.kyc}</span>
+                                        <span className={`whitespace-nowrap rounded-full px-2.5 py-1 font-medium ${kycStyles[o.kyc]}`}>{o.kyc}</span>
                                     </td>
                                     <td className="py-4 pr-4 text-slate-700">{o.total}</td>
                                     <td className="py-4 pr-4 text-slate-700">{o.verified}</td>
                                     <td className="py-4 pr-4 text-slate-700">{o.occupied}</td>
                                     <td className="py-4 pr-4 text-slate-700">{o.pending}</td>
-                                    <td className="py-4 pr-4 font-medium text-slate-900">{o.earnings}</td>
+                                    <td className="whitespace-nowrap py-4 pr-4 font-medium text-slate-900">{o.earnings}</td>
                                     <td className="py-4 pr-4">
                                         <span className={`rounded-full px-2.5 py-1 font-medium ${statusStyles[o.status]}`}>{o.status}</span>
                                     </td>
@@ -110,7 +111,53 @@ const PropertyOwners = () => {
                     </table>
                 </div>
 
-                <div className="mt-5 flex items-center justify-between">
+                {/* Mobile / tablet cards */}
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
+                    {filtered.map((o) => (
+                        <div key={o.id} className="rounded-xl border border-slate-200 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="truncate text-sm font-semibold text-slate-900">{o.name}</p>
+                                    <p className="mt-1 text-sm font-medium text-slate-900">{o.earnings}</p>
+                                </div>
+                                <div className="flex flex-shrink-0 flex-col items-end gap-1.5 text-xs">
+                                    <span className={`whitespace-nowrap rounded-full px-2.5 py-1 font-medium ${kycStyles[o.kyc]}`}>{o.kyc}</span>
+                                    <span className={`rounded-full px-2.5 py-1 font-medium ${statusStyles[o.status]}`}>{o.status}</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-3 grid grid-cols-4 gap-2 rounded-lg bg-slate-50 p-3 text-center">
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-900">{o.total}</p>
+                                    <p className="mt-0.5 text-[10px] leading-tight text-slate-500">Total</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-900">{o.verified}</p>
+                                    <p className="mt-0.5 text-[10px] leading-tight text-slate-500">Verified</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-900">{o.occupied}</p>
+                                    <p className="mt-0.5 text-[10px] leading-tight text-slate-500">Occupied</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-900">{o.pending}</p>
+                                    <p className="mt-0.5 text-[10px] leading-tight text-slate-500">Pending</p>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 flex items-center gap-5 border-t border-slate-100 pt-3 text-xs">
+                                <Link to={`/admin/property-owners/${o.id}`} className="font-medium text-blue-600 hover:text-blue-700">
+                                    View
+                                </Link>
+                                <button type="button" className="font-medium text-rose-600 hover:text-rose-700">
+                                    {o.status === 'Suspended' ? 'Reinstate' : 'Suspend'}
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="mt-5 flex items-center justify-between gap-3">
                     <p className="text-xs text-slate-400">1 of 10 pages</p>
                     <div className="flex items-center gap-2">
                         {[1, 2, 3].map((page) => (

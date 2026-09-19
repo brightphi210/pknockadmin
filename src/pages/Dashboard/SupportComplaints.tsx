@@ -1,4 +1,4 @@
-import { MoreVertical, Paperclip, Search, Send } from "lucide-react";
+import { ArrowLeft, MoreVertical, Paperclip, Search, Send } from "lucide-react";
 import { useState } from "react";
 
 const conversations = [
@@ -19,7 +19,6 @@ const conversations = [
         unread: 3,
         avatar: "S",
         color: "bg-purple-500 text-white",
-        active: true,
     },
     {
         id: 3,
@@ -70,11 +69,22 @@ const conversations = [
 
 const SupportComplaints = () => {
     const [message, setMessage] = useState("");
+    const [activeId, setActiveId] = useState(2);
+    // On small screens only one pane is visible at a time.
+    const [mobileView, setMobileView] = useState<"list" | "chat">("list");
+
+    const active =
+        conversations.find((c) => c.id === activeId) ?? conversations[0];
+
+    const openChat = (id: number) => {
+        setActiveId(id);
+        setMobileView("chat");
+    };
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
-            <div className="mb-6">
-                <h1 className="text-2xl font-semibold text-gray-900">
+        <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+            <div className="mb-4 sm:mb-6">
+                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
                     Support & Complaints
                 </h1>
                 <p className="text-sm text-gray-500 mt-1">
@@ -82,9 +92,12 @@ const SupportComplaints = () => {
                 </p>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-[calc(100vh-180px)] flex">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-[calc(100dvh-11rem)] min-h-[440px] md:h-[calc(100vh-180px)] flex">
                 {/* Left – Chat list */}
-                <div className="w-80 border-r border-gray-200 flex flex-col">
+                <div
+                    className={`w-full md:w-80 md:flex-shrink-0 md:border-r border-gray-200 flex-col ${mobileView === "chat" ? "hidden md:flex" : "flex"
+                        }`}
+                >
                     <div className="p-4 border-b border-gray-100">
                         <h2 className="font-semibold text-gray-900 mb-3">Chat</h2>
                         <div className="relative">
@@ -102,22 +115,26 @@ const SupportComplaints = () => {
 
                     <div className="flex-1 overflow-y-auto">
                         {conversations.map((c) => (
-                            <div
+                            <button
                                 key={c.id}
-                                className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 ${c.active ? "bg-gray-50" : ""
+                                type="button"
+                                onClick={() => openChat(c.id)}
+                                className={`w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-gray-50 ${c.id === activeId ? "md:bg-gray-50" : ""
                                     }`}
                             >
                                 <div
-                                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold ${c.color}`}
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${c.color}`}
                                 >
                                     {c.avatar}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between gap-2">
                                         <p className="text-sm font-medium text-gray-900 truncate">
                                             {c.name}
                                         </p>
-                                        <p className="text-xs text-gray-400">{c.time}</p>
+                                        <p className="text-xs text-gray-400 flex-shrink-0">
+                                            {c.time}
+                                        </p>
                                     </div>
                                     <div className="flex items-center justify-between mt-0.5">
                                         <p className="text-xs text-gray-500 truncate">{c.preview}</p>
@@ -128,23 +145,38 @@ const SupportComplaints = () => {
                                         )}
                                     </div>
                                 </div>
-                            </div>
+                            </button>
                         ))}
                     </div>
                 </div>
 
                 {/* Right – Conversation */}
-                <div className="flex-1 flex flex-col">
+                <div
+                    className={`flex-1 min-w-0 flex-col ${mobileView === "list" ? "hidden md:flex" : "flex"
+                        }`}
+                >
                     {/* Chat header */}
-                    <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold">
-                                S
+                    <div className="px-3 sm:px-5 py-3 sm:py-4 border-b border-gray-100 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                            <button
+                                type="button"
+                                onClick={() => setMobileView("list")}
+                                className="md:hidden p-2 -ml-1 hover:bg-gray-100 rounded-lg flex-shrink-0"
+                                aria-label="Back to chats"
+                            >
+                                <ArrowLeft size={18} className="text-gray-600" />
+                            </button>
+                            <div
+                                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold flex-shrink-0 ${active.color}`}
+                            >
+                                {active.avatar}
                             </div>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <p className="font-semibold text-gray-900">Sarah Johnson</p>
-                                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <p className="font-semibold text-gray-900 truncate">
+                                        {active.name}
+                                    </p>
+                                    <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 whitespace-nowrap">
                                         Property Owner
                                     </span>
                                 </div>
@@ -154,25 +186,27 @@ const SupportComplaints = () => {
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button className="p-2 hover:bg-gray-100 rounded-lg">
+                        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                            <button className="p-2 hover:bg-gray-100 rounded-lg" aria-label="Search in chat">
                                 <Search size={18} className="text-gray-500" />
                             </button>
-                            <button className="p-2 hover:bg-gray-100 rounded-lg relative">
+                            <button className="p-2 hover:bg-gray-100 rounded-lg relative" aria-label="More options">
                                 <MoreVertical size={18} className="text-gray-500" />
                             </button>
                         </div>
                     </div>
 
                     {/* Messages */}
-                    <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                    <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4">
                         {/* Incoming */}
-                        <div className="flex gap-3">
-                            <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs font-semibold flex-shrink-0">
-                                S
+                        <div className="flex gap-2 sm:gap-3">
+                            <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${active.color}`}
+                            >
+                                {active.avatar}
                             </div>
-                            <div>
-                                <div className="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-md">
+                            <div className="min-w-0 max-w-[85%] sm:max-w-md">
+                                <div className="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-2.5">
                                     <p className="text-sm text-gray-800">
                                         There has been no running water in the unit for three days.
                                         This is urgent and affecting daily living.
@@ -183,9 +217,9 @@ const SupportComplaints = () => {
                         </div>
 
                         {/* Outgoing */}
-                        <div className="flex justify-end gap-3">
-                            <div>
-                                <div className="bg-purple-600 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-md">
+                        <div className="flex justify-end gap-2 sm:gap-3">
+                            <div className="min-w-0 max-w-[85%] sm:max-w-md">
+                                <div className="bg-purple-600 text-white rounded-2xl rounded-tr-sm px-4 py-2.5">
                                     <p className="text-sm">
                                         We have notified the property owner and flagged this for
                                         urgent resolution. A PVO will follow up today.
@@ -202,8 +236,8 @@ const SupportComplaints = () => {
                     </div>
 
                     {/* Input */}
-                    <div className="p-4 border-t border-gray-100">
-                        <div className="flex items-center gap-3">
+                    <div className="p-3 sm:p-4 border-t border-gray-100">
+                        <div className="flex items-center gap-2 sm:gap-3">
                             <div className="flex-1 relative">
                                 <input
                                     type="text"
@@ -212,11 +246,17 @@ const SupportComplaints = () => {
                                     onChange={(e) => setMessage(e.target.value)}
                                     className="w-full pl-4 pr-12 py-3 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                                <button className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600">
+                                <button
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600"
+                                    aria-label="Attach file"
+                                >
                                     <Paperclip size={18} />
                                 </button>
                             </div>
-                            <button className="w-11 h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center">
+                            <button
+                                className="w-11 h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center flex-shrink-0"
+                                aria-label="Send message"
+                            >
                                 <Send size={18} />
                             </button>
                         </div>

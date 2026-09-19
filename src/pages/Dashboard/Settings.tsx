@@ -7,6 +7,31 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+const Toggle = ({
+    enabled,
+    onChange,
+    label,
+}: {
+    enabled: boolean;
+    onChange: () => void;
+    label: string;
+}) => (
+    <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-label={label}
+        onClick={onChange}
+        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${enabled ? "bg-blue-600" : "bg-gray-200"
+            }`}
+    >
+        <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? "translate-x-5" : ""
+                }`}
+        />
+    </button>
+);
+
 const Settings = () => {
     const [activeSection, setActiveSection] = useState<
         "password" | "platform" | "fees" | "notification"
@@ -30,29 +55,10 @@ const Settings = () => {
         { id: "notification", label: "Notification", icon: Bell },
     ] as const;
 
-    const Toggle = ({
-        enabled,
-        onChange,
-    }: {
-        enabled: boolean;
-        onChange: () => void;
-    }) => (
-        <button
-            onClick={onChange}
-            className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? "bg-blue-600" : "bg-gray-200"
-                }`}
-        >
-            <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? "translate-x-5" : ""
-                    }`}
-            />
-        </button>
-    );
-
     return (
-        <div className="min-h-screen bg-gray-50 flex">
-            {/* Sidebar */}
-            <div className="w-56 bg-white border-r border-gray-200 p-4 space-y-1">
+        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+            {/* Section nav: horizontal scroll on mobile, sidebar from md */}
+            <div className="w-full md:w-56 md:flex-shrink-0 bg-white border-b md:border-b-0 md:border-r border-gray-200 p-2 md:p-4 flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
                 {sections.map((sec) => {
                     const Icon = sec.icon;
                     const isActive = activeSection === sec.id;
@@ -60,7 +66,7 @@ const Settings = () => {
                         <button
                             key={sec.id}
                             onClick={() => setActiveSection(sec.id)}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
+                            className={`flex flex-shrink-0 items-center gap-2.5 whitespace-nowrap md:w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
                                 ? "bg-gray-900 text-white"
                                 : "text-gray-600 hover:bg-gray-50"
                                 }`}
@@ -73,19 +79,19 @@ const Settings = () => {
             </div>
 
             {/* Content */}
-            <div className="flex-1 p-8">
+            <div className="flex-1 min-w-0 p-4 sm:p-6 md:p-8">
                 {/* ========== PASSWORD & SECURITY ========== */}
                 {activeSection === "password" && (
                     <div className="max-w-lg">
                         <h1 className="text-xl font-semibold text-gray-900">
                             Password & Security
                         </h1>
-                        <p className="text-sm text-gray-500 mt-1 mb-6">
+                        <p className="text-sm text-gray-500 mt-1 mb-5 sm:mb-6">
                             Manage your password and account security settings
                         </p>
 
                         {/* Change Password */}
-                        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-5">
+                        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-5">
                             <h2 className="font-semibold text-gray-900 mb-4">
                                 Change Password
                             </h2>
@@ -120,15 +126,15 @@ const Settings = () => {
                                         className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                 </div>
-                                <button className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">
+                                <button className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">
                                     Change Password
                                 </button>
                             </div>
                         </div>
 
                         {/* Two Factor */}
-                        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-5 flex items-center justify-between">
-                            <div>
+                        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 mb-4 sm:mb-5 flex items-center justify-between gap-4">
+                            <div className="min-w-0">
                                 <h2 className="font-semibold text-gray-900">
                                     Two Factor Authentication
                                 </h2>
@@ -140,22 +146,23 @@ const Settings = () => {
                             <Toggle
                                 enabled={twoFactor}
                                 onChange={() => setTwoFactor(!twoFactor)}
+                                label="Two Factor Authentication"
                             />
                         </div>
 
                         {/* Active Sessions */}
-                        <div className="bg-white rounded-xl border border-gray-200 p-5">
+                        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
                             <h2 className="font-semibold text-gray-900 mb-4">
                                 Active Sessions
                             </h2>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+                            <div className="space-y-4 sm:space-y-3">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
                                             <Monitor size={18} className="text-blue-600" />
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-900">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 truncate">
                                                 MacBook Pro — Chrome
                                             </p>
                                             <p className="text-xs text-gray-500">
@@ -163,17 +170,17 @@ const Settings = () => {
                                             </p>
                                         </div>
                                     </div>
-                                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 flex-shrink-0">
                                         Active
                                     </span>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
                                             <Monitor size={18} className="text-blue-600" />
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-900">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 truncate">
                                                 iMac Pro — Chrome
                                             </p>
                                             <p className="text-xs text-gray-500">
@@ -181,7 +188,7 @@ const Settings = () => {
                                             </p>
                                         </div>
                                     </div>
-                                    <button className="text-xs font-medium text-red-600 hover:text-red-700">
+                                    <button className="text-xs font-medium text-red-600 hover:text-red-700 flex-shrink-0 p-1">
                                         Logout
                                     </button>
                                 </div>
@@ -196,11 +203,11 @@ const Settings = () => {
                         <h1 className="text-xl font-semibold text-gray-900">
                             Platform Configuration
                         </h1>
-                        <p className="text-sm text-gray-500 mt-1 mb-6">
+                        <p className="text-sm text-gray-500 mt-1 mb-5 sm:mb-6">
                             Core settings that govern how P-Knock operates
                         </p>
 
-                        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+                        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-5">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                                     Default Country
@@ -231,7 +238,7 @@ const Settings = () => {
                                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
                                 />
                             </div>
-                            <button className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">
+                            <button className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">
                                 Save Changes
                             </button>
                         </div>
@@ -244,11 +251,11 @@ const Settings = () => {
                         <h1 className="text-xl font-semibold text-gray-900">
                             Fees & Payments
                         </h1>
-                        <p className="text-sm text-gray-500 mt-1 mb-6">
+                        <p className="text-sm text-gray-500 mt-1 mb-5 sm:mb-6">
                             Configure transaction fees and payout rules
                         </p>
 
-                        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+                        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 space-y-5">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                                     Platform Transaction Fee (%)
@@ -269,7 +276,7 @@ const Settings = () => {
                                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
                                 />
                             </div>
-                            <button className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">
+                            <button className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">
                                 Save Changes
                             </button>
                         </div>
@@ -282,14 +289,14 @@ const Settings = () => {
                         <h1 className="text-xl font-semibold text-gray-900">
                             Notification Preferences
                         </h1>
-                        <p className="text-sm text-gray-500 mt-1 mb-6">
+                        <p className="text-sm text-gray-500 mt-1 mb-5 sm:mb-6">
                             Choose which events trigger email and in-app alerts for admins
                         </p>
 
                         <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
                             {/* Email */}
-                            <div className="p-4 flex items-center justify-between">
-                                <div>
+                            <div className="p-4 flex items-center justify-between gap-4">
+                                <div className="min-w-0">
                                     <p className="font-medium text-gray-900">Email Notifications</p>
                                     <p className="text-sm text-gray-500">
                                         Receive notifications via email
@@ -298,12 +305,13 @@ const Settings = () => {
                                 <Toggle
                                     enabled={emailNotif}
                                     onChange={() => setEmailNotif(!emailNotif)}
+                                    label="Email Notifications"
                                 />
                             </div>
 
                             {/* Push */}
-                            <div className="p-4 flex items-center justify-between">
-                                <div>
+                            <div className="p-4 flex items-center justify-between gap-4">
+                                <div className="min-w-0">
                                     <p className="font-medium text-gray-900">Push Notifications</p>
                                     <p className="text-sm text-gray-500">
                                         Receive browser push notifications
@@ -312,6 +320,7 @@ const Settings = () => {
                                 <Toggle
                                     enabled={pushNotif}
                                     onChange={() => setPushNotif(!pushNotif)}
+                                    label="Push Notifications"
                                 />
                             </div>
 
@@ -350,18 +359,22 @@ const Settings = () => {
                             ].map((item) => (
                                 <div
                                     key={item.label}
-                                    className="p-4 flex items-center justify-between"
+                                    className="p-4 flex items-center justify-between gap-4"
                                 >
-                                    <div>
+                                    <div className="min-w-0">
                                         <p className="font-medium text-gray-900">{item.label}</p>
                                         <p className="text-sm text-gray-500">{item.desc}</p>
                                     </div>
-                                    <Toggle enabled={item.value} onChange={item.toggle} />
+                                    <Toggle
+                                        enabled={item.value}
+                                        onChange={item.toggle}
+                                        label={item.label}
+                                    />
                                 </div>
                             ))}
 
                             <div className="p-4">
-                                <button className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">
+                                <button className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">
                                     Save Changes
                                 </button>
                             </div>

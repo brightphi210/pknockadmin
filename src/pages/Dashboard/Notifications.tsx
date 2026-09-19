@@ -104,27 +104,27 @@ const Notifications = () => {
     });
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
+        <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">
+                    <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
                         Notifications
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">
                         4 unread notifications
                     </p>
                 </div>
-                <button className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                <button className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium w-full sm:w-auto">
                     <CheckCheck size={16} />
                     Mark as read
                 </button>
             </div>
 
-            <div className="flex gap-6">
-                {/* Sidebar Categories */}
-                <div className="w-56 flex-shrink-0">
-                    <div className="bg-white rounded-xl border border-gray-200 p-2 space-y-0.5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+                {/* Categories: horizontal scroll on mobile, sidebar on desktop */}
+                <div className="w-full lg:w-56 lg:flex-shrink-0">
+                    <div className="bg-white rounded-xl border border-gray-200 p-2 flex gap-1 overflow-x-auto lg:flex-col lg:gap-0.5 lg:overflow-visible">
                         {categories.map((cat) => {
                             const Icon = cat.icon;
                             const isActive = activeCategory === cat.id;
@@ -132,7 +132,7 @@ const Notifications = () => {
                                 <button
                                     key={cat.id}
                                     onClick={() => setActiveCategory(cat.id)}
-                                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
+                                    className={`flex flex-shrink-0 items-center gap-2 whitespace-nowrap px-3 py-2 lg:py-2.5 lg:w-full rounded-lg text-sm font-medium transition-colors ${isActive
                                         ? "bg-gray-900 text-white"
                                         : "text-gray-600 hover:bg-gray-50"
                                         }`}
@@ -146,9 +146,9 @@ const Notifications = () => {
                 </div>
 
                 {/* Notifications List */}
-                <div className="flex-1 space-y-3">
+                <div className="flex-1 min-w-0 space-y-3">
                     {/* Search */}
-                    <div className="relative max-w-sm ml-auto mb-4">
+                    <div className="relative w-full sm:max-w-sm sm:ml-auto mb-1 sm:mb-4">
                         <Search
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                             size={16}
@@ -165,7 +165,7 @@ const Notifications = () => {
                     {filtered.map((n) => (
                         <div
                             key={n.id}
-                            className="bg-white rounded-xl border border-gray-200 p-4 flex items-start gap-4 hover:shadow-sm transition-shadow"
+                            className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 flex items-start gap-3 sm:gap-4 hover:shadow-sm transition-shadow"
                         >
                             <div
                                 className={`w-10 h-10 rounded-lg ${n.iconBg} flex items-center justify-center flex-shrink-0`}
@@ -190,12 +190,12 @@ const Notifications = () => {
                                 )}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between">
-                                    <div>
+                                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                                    <div className="min-w-0">
                                         <p className="font-medium text-gray-900">{n.title}</p>
                                         <p className="text-sm text-gray-500 mt-0.5">{n.message}</p>
                                     </div>
-                                    <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                                    <div className="flex items-center gap-2 flex-shrink-0 mt-1 sm:mt-0">
                                         {n.unread && (
                                             <span className="w-2 h-2 rounded-full bg-green-500" />
                                         )}
