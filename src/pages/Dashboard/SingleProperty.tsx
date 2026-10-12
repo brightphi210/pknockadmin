@@ -24,6 +24,8 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import ConfirmModal from '../../components/UI/ConfirmModal'
+import Modal from '../../components/UI/Modal'
 
 const images = [
     'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200',
@@ -322,78 +324,57 @@ const SingleProperty = () => {
                 </div>
             </div>
 
-            {/* Approve modal */}
-            {showApprove && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl">
-                        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                            <CheckCircle2 size={22} />
-                        </span>
-                        <h3 className="mt-4 text-sm font-bold text-slate-900">Approve & Publish Property</h3>
-                        <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                            This will mark 3 Bedroom Apartment at Lekki Phase 1 as Verified & Published and make it
-                            publicly visible on the P-Knock platform. This action cannot be undone.
-                        </p>
-                        <div className="mt-5 flex gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setShowApprove(false)}
-                                className="flex-1 rounded-xl bg-slate-100 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setShowApprove(false)}
-                                className="flex-1 rounded-xl bg-blue-600 py-2.5 text-xs font-semibold text-white hover:bg-blue-700"
-                            >
-                                Confirm & Publish
-                            </button>
-                        </div>
+            <Modal
+                open={showApprove}
+                onClose={() => setShowApprove(false)}
+                size="sm"
+                centered
+                icon={
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                        <CheckCircle2 size={22} />
                     </div>
-                </div>
-            )}
+                }
+                title="Approve & Publish Property"
+                description="This will mark 3 Bedroom Apartment at Lekki Phase 1 as Verified & Published and make it publicly visible on the P-Knock platform. This action cannot be undone."
+                footer={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => setShowApprove(false)}
+                            className="flex-1 rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowApprove(false)}
+                            className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700"
+                        >
+                            Confirm & Publish
+                        </button>
+                    </>
+                }
+            />
 
-            {/* Reject modal */}
-            {showReject && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl">
-                        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
-                            <X size={22} />
-                        </span>
-                        <h3 className="mt-4 text-sm font-bold text-slate-900">Reject Property</h3>
-                        <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                            Provide a clear reason for rejection. This will be communicated to the property owner.
-                        </p>
-                        <div className="mt-4 text-left">
-                            <label className="text-xs font-medium text-slate-600">Rejection Reason</label>
-                            <textarea
-                                value={rejectionReason}
-                                onChange={(e) => setRejectionReason(e.target.value)}
-                                placeholder="Enter rejection reason..."
-                                rows={4}
-                                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-rose-400 focus:outline-none"
-                            />
-                        </div>
-                        <div className="mt-5 flex gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setShowReject(false)}
-                                className="flex-1 rounded-xl bg-slate-100 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setShowReject(false)}
-                                className="flex-1 rounded-xl bg-rose-600 py-2.5 text-xs font-semibold text-white hover:bg-rose-700"
-                            >
-                                Confirm Rejection
-                            </button>
-                        </div>
+            <ConfirmModal
+                open={showReject}
+                onClose={() => setShowReject(false)}
+                onConfirm={(reason) => {
+                    setRejectionReason(reason)
+                    setShowReject(false)
+                }}
+                title="Reject Property"
+                description="Provide a clear reason for rejection. This will be communicated to the property owner."
+                icon={
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+                        <X size={22} />
                     </div>
-                </div>
-            )}
+                }
+                tone="danger"
+                confirmLabel="Confirm Rejection"
+                reasonLabel="Rejection Reason"
+                reasonPlaceholder="Enter rejection reason..."
+            />
         </div>
     )
 }

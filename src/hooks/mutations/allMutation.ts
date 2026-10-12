@@ -36,79 +36,83 @@ export const useApproveTutor = (id: string) => {
   return approveTutor
 }
 
-export const useRejectTutor = (id: string) => {
-  const queryClient = useQueryClient()
 
-  const rejectTutor = useMutation({
-    mutationFn: async (data: any = {}) => {
-      const token = (await localStorage.getItem("welearnAdminToken")) || ""
-      return post_requests(`welearn-admin/tutors/${id}/reject/`, data, token)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tutors"] })
-    },
-  })
 
-  return rejectTutor
+
+// ==================== STAFF / PVO ===========================
+
+export type StaffMember = {
+  id: string
+  email: string
+  first_name: string
+  last_name: string
+  phone?: string
+  gender?: string
+  date_of_birth?: string
+  state_of_origin?: string
+  nationality?: string
+  staff_role?: string
+  active?: boolean
+  coverage_area?: string
+  availability?: boolean
+  display_id?: string
+  // optional stats if backend returns them
+  assigned_count?: number
+  completed_count?: number
+  pending_count?: number
+  last_active?: string
+}
+
+export type CreateStaffPayload = {
+  user: {
+    email: string
+    first_name: string
+    last_name: string
+    phone: string
+    password: string
+    gender: string
+    date_of_birth: string | null
+    state_of_origin: string
+    nationality: string
+    staff_role: string
+    active: boolean
+    coverage_area: string
+  }
+  staff_role: string
+  active: boolean
+}
+
+export type SuspendReactivatePayload = {
+  reason: string
 }
 
 
-export const useGenerateReceipt = (id: string) => {
-  const queryClient = useQueryClient()
-
-  const generateReceipt = useMutation({
-    mutationFn: async (data: any = {}) => {
-      const token = (await localStorage.getItem("welearnAdminToken")) || ""
-      return post_requests(`welearn-admin/withdrawals/${id}/receipt/`, data, token)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["withdrawals"] })
+// Create PVO
+export const useCreateStaff = () => {
+  return useMutation({
+    mutationFn: async (payload: CreateStaffPayload) => {
+      const token = (await localStorage.getItem("pknockAdminToken")) || ""
+      return post_requests("accounts/staff/", payload, token)
     },
   })
-
-  return generateReceipt
 }
 
-
-export const useApproveWithdrawals = (id: string | number) => {
-  const queryClient = useQueryClient();
-
-  const approveWithdrawal = useMutation({
-    mutationFn: async (data: any = {}) => {
-      const token = localStorage.getItem("welearnAdminToken") || "";
-      return post_requests(
-        `welearn-admin/withdrawals/${id}/approve/`,
-        data,
-        token
-      );
+// Suspend user
+export const useSuspendUser = () => {
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      const token = (await localStorage.getItem("pknockAdminToken")) || ""
+      return post_requests(`accounts/users/${id}/suspend/`, { reason }, token)
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["withdrawals"] });
-      queryClient.invalidateQueries({ queryKey: ["tutors"] });
+  })
+}
+
+// Reactivate user
+export const useReactivateUser = () => {
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      const token = (await localStorage.getItem("pknockAdminToken")) || ""
+      return post_requests(`accounts/users/${id}/reactivate/`, { reason }, token)
     },
-  });
-
-  return approveWithdrawal;
-};
-
-export const useRejectWithdrawals = (id: string | number) => {
-  const queryClient = useQueryClient();
-
-  const rejectWithdrawal = useMutation({
-    mutationFn: async (data: any = {}) => {
-      const token = localStorage.getItem("welearnAdminToken") || "";
-      return post_requests(
-        `welearn-admin/withdrawals/${id}/reject/`,
-        data,
-        token
-      );
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["withdrawals"] });
-      queryClient.invalidateQueries({ queryKey: ["tutors"] });
-    },
-  });
-
-  return rejectWithdrawal;
-};
-
+  })
+}

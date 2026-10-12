@@ -10,6 +10,7 @@ import {
     Star as StarIcon,
 } from "lucide-react";
 import { useState } from "react";
+import ConfirmModal from "../../components/UI/ConfirmModal";
 
 const activityLog = [
     {
@@ -528,95 +529,37 @@ const SingleVerificationOfficer = () => {
                 )}
             </div>
 
-            {/* Suspend Modal */}
-            {showSuspendModal && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl w-full max-w-md shadow-xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
-                        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <span className="text-2xl text-red-600">⊘</span>
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
-                            Suspend Account
-                        </h3>
-                        <p className="text-sm text-gray-600 text-center mb-5">
-                            Suspending Emeka Nwosu's account will hide all their properties
-                            from the platform and prevent them from submitting new listings.
-                        </p>
-                        <div className="mb-5">
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                Reason for suspension <span className="text-red-500">*</span>
-                            </label>
-                            <textarea
-                                rows={3}
-                                placeholder="e.g. Multiple complaints received, pending investigation..."
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
-                            />
-                        </div>
-                        <div className="flex flex-col-reverse gap-3 sm:flex-row">
-                            <button
-                                onClick={() => setShowSuspendModal(false)}
-                                className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setIsSuspended(true);
-                                    setShowSuspendModal(false);
-                                }}
-                                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium"
-                            >
-                                Suspend Account
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmModal
+                open={showSuspendModal}
+                onClose={() => setShowSuspendModal(false)}
+                onConfirm={() => {
+                    setIsSuspended(true);
+                    setShowSuspendModal(false);
+                }}
+                title="Suspend Account"
+                description="Suspending this officer's account will hide their listings and prevent them from submitting new inspections."
+                icon={<span className="text-2xl text-red-600">⊘</span>}
+                tone="danger"
+                confirmLabel="Suspend Account"
+                reasonLabel="Reason for suspension"
+                reasonPlaceholder="e.g. Multiple complaints received, pending investigation..."
+            />
 
-            {/* Reactivate Modal */}
-            {showReactivateModal && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl w-full max-w-md shadow-xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
-                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <span className="text-2xl text-green-600">✓</span>
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
-                            Reactivate Account
-                        </h3>
-                        <p className="text-sm text-gray-600 text-center mb-5">
-                            Reactivating Emeka Nwosu's account will display all their
-                            properties on the platform and they can now submit new listings.
-                        </p>
-                        <div className="mb-5">
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                Reason for reactivating <span className="text-red-500">*</span>
-                            </label>
-                            <textarea
-                                rows={3}
-                                placeholder="e.g. Multiple complaints received, pending investigation..."
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-                            />
-                        </div>
-                        <div className="flex flex-col-reverse gap-3 sm:flex-row">
-                            <button
-                                onClick={() => setShowReactivateModal(false)}
-                                className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setIsSuspended(false);
-                                    setShowReactivateModal(false);
-                                }}
-                                className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium"
-                            >
-                                Reactivate Account
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmModal
+                open={showReactivateModal}
+                onClose={() => setShowReactivateModal(false)}
+                onConfirm={() => {
+                    setIsSuspended(false);
+                    setShowReactivateModal(false);
+                }}
+                title="Reactivate Account"
+                description="Reactivating this officer's account will restore their access to inspections and verification tasks."
+                icon={<span className="text-2xl text-emerald-600">✓</span>}
+                tone="success"
+                confirmLabel="Reactivate Account"
+                reasonLabel="Reason for reactivating"
+                reasonPlaceholder="e.g. Resolution completed and compliance checks passed."
+            />
         </div>
     );
 };

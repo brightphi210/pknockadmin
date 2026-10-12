@@ -1,286 +1,334 @@
 import { Search } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import LoadingOverlay from "../../components/LoadingOverlay";
+import { useGetUsers } from "../../hooks/queries/allQueries";
 
-const users = [
-    {
-        id: "USR – 001",
-        name: "Amara Okonkwo",
-        email: "amara@gmail.com",
-        phone: "+234 902 284 9307",
-        registered: "Jul 25, 2026 • 09:03am",
-        inspections: 3,
-        kyc: "Verified",
-    },
-    {
-        id: "USR – 002",
-        name: "Binta Sadiq",
-        email: "binta.sadiq@example.com",
-        phone: "+234 809 112 3345",
-        registered: "Aug 1, 2026 • 11:15am",
-        inspections: 5,
-        kyc: "Pending",
-    },
-    {
-        id: "USR – 003",
-        name: "Chike Obi",
-        email: "chikeobi@mail.com",
-        phone: "+234 801 234 5678",
-        registered: "Aug 3, 2026 • 02:47pm",
-        inspections: 2,
-        kyc: "Verified",
-    },
-    {
-        id: "USR – 004",
-        name: "Damilola Adeyemi",
-        email: "dami.adeyemi@domain.com",
-        phone: "+234 803 987 6543",
-        registered: "Aug 5, 2026 • 10:29am",
-        inspections: 1,
-        kyc: "Rejected",
-    },
-    {
-        id: "USR – 005",
-        name: "Effiong Udo",
-        email: "effiong.udo@mail.net",
-        phone: "+234 807 555 1234",
-        registered: "Aug 6, 2026 • 04:05pm",
-        inspections: 4,
-        kyc: "Verified",
-    },
-    {
-        id: "USR – 006",
-        name: "Fatima Bello",
-        email: "fatima.bello@webmail.com",
-        phone: "+234 806 777 8899",
-        registered: "Aug 7, 2026 • 08:20am",
-        inspections: 3,
-        kyc: "Pending",
-    },
-    {
-        id: "USR – 007",
-        name: "Gbenga Ajayi",
-        email: "gbenga.ajayi@internet.com",
-        phone: "+234 805 333 2221",
-        registered: "Aug 8, 2026 • 12:45pm",
-        inspections: 2,
-        kyc: "Verified",
-    },
-    {
-        id: "USR – 008",
-        name: "Halima Yusuf",
-        email: "halima.yusuf@mailbox.org",
-        phone: "+234 802 444 6767",
-        registered: "Aug 9, 2026 • 03:10pm",
-        inspections: 6,
-        kyc: "Rejected",
-    },
-    {
-        id: "USR – 009",
-        name: "Ifeanyi Nwosu",
-        email: "ifeanyi.nwosu@service.com",
-        phone: "+234 701 998 4455",
-        registered: "Aug 10, 2026 • 09:55am",
-        inspections: 7,
-        kyc: "Verified",
-    },
-    {
-        id: "USR – 010",
-        name: "Jumoke Adetunji",
-        email: "jumoke.adetunji@fastmail.net",
-        phone: "+234 803 111 6789",
-        registered: "Aug 11, 2026 • 01:30pm",
-        inspections: 1,
-        kyc: "Pending",
-    },
-    {
-        id: "USR – 011",
-        name: "Kelechi Eze",
-        email: "kelechi.eze@mailcity.com",
-        phone: "+234 809 765 4321",
-        registered: "Aug 12, 2026 • 05:40pm",
-        inspections: 4,
-        kyc: "Verified",
-    },
-];
+type UserRecord = {
+    id?: string;
+    display_id?: string;
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    phone?: string;
+    registered_at?: string;
+    inspection_count?: number;
+    kyc_status?: string;
+    role?: string;
+    is_active?: boolean;
+};
 
-const KycBadge = ({ status }: { status: string }) => {
+const formatDate = (value?: string) => {
+    if (!value) return "N/A";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat("en-NG", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    }).format(date);
+};
+
+const normalizeStatus = (status?: string) => {
+    if (!status) return "Unknown";
+    return status
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const KycBadge = ({ status }: { status?: string }) => {
+    const value = normalizeStatus(status);
     const styles: Record<string, string> = {
         Verified: "bg-green-100 text-green-700",
         Pending: "bg-amber-100 text-amber-700",
         Rejected: "bg-red-100 text-red-700",
+        Approved: "bg-green-100 text-green-700",
+        "Not Verified": "bg-slate-100 text-slate-700",
     };
+
     return (
         <span
-            className={`inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] || "bg-gray-100 text-gray-600"
+            className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[value] || "bg-gray-100 text-gray-600"
                 }`}
         >
-            {status}
+            {value}
         </span>
     );
 };
 
-const Row = ({
-    label,
-    children,
+const EmptyState = ({
+    title,
+    description,
+    onAction,
 }: {
-    label: string;
-    children: React.ReactNode;
+    title: string;
+    description: string;
+    onAction?: () => void;
 }) => (
-    <div className="flex items-start justify-between gap-4">
-        <dt className="text-gray-500 flex-shrink-0">{label}</dt>
-        <dd className="text-gray-700 text-right min-w-0 break-words">{children}</dd>
+    <div className="flex min-h-85 items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-lg font-semibold text-slate-700">
+                !
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+            <p className="mt-2 text-sm text-slate-500">{description}</p>
+            {onAction && (
+                <button
+                    type="button"
+                    onClick={onAction}
+                    className="mt-5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                >
+                    Refresh
+                </button>
+            )}
+        </div>
     </div>
 );
 
 const Users = () => {
     const navigate = useNavigate();
     const [search, setSearch] = useState("");
+    const [page, setPage] = useState(1);
+    const { users: response, isLoading, isError, refetch } = useGetUsers(page);
 
-    const viewUser = (id: string) =>
-        navigate(`/admin/users/${id.replace(/\s/g, "")}`);
+    const users = useMemo(() => {
+        const payload = response?.data ?? response;
+        const list = Array.isArray(payload?.results)
+            ? payload.results
+            : Array.isArray(payload)
+                ? payload
+                : [];
+
+        return list as UserRecord[];
+    }, [response]);
+
+    const payload = (response?.data ?? response) as { count?: number; previous?: string | null; next?: string | null; results?: UserRecord[] } | UserRecord[] | undefined;
+    const totalUsers = Number(payload && typeof payload === "object" && "count" in payload ? payload.count ?? users.length : users.length ?? 0);
+    const hasPreviousPage = Boolean(payload && typeof payload === "object" && "previous" in payload && payload.previous);
+    const hasNextPage = Boolean(payload && typeof payload === "object" && "next" in payload && payload.next);
+    const totalPages = Math.max(1, Math.ceil(totalUsers / Math.max(users.length || 1, 1)));
+
+    const filteredUsers = useMemo(() => {
+        if (!search.trim()) return users;
+        const term = search.toLowerCase();
+        return users.filter((user) => {
+            const name = `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.toLowerCase();
+            const match = `${name} ${user?.email ?? ""} ${user?.phone ?? ""}`.toLowerCase();
+            return match.includes(term);
+        });
+    }, [search, users]);
+
+    const viewUser = (id?: string) => {
+        if (!id) return;
+        navigate(`/admin/users/${id}`);
+    };
+
+    if (isError) {
+        return (
+            <EmptyState
+                title="Could not load users"
+                description="Please refresh the page or try again in a few moments."
+                onAction={() => refetch()}
+            />
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
-            <div className="mb-5 sm:mb-6">
-                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
-                    Users
-                </h1>
-                <p className="text-sm text-gray-500 mt-1">
-                    All registered users on the platform
-                </p>
-            </div>
-
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-gray-100">
-                    <div className="relative w-full md:max-w-md">
-                        <Search
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                            size={18}
-                        />
-                        <input
-                            type="text"
-                            placeholder="Search"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
+        <>
+            <LoadingOverlay visible={isLoading} />
+            <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+                <div className="mb-5 sm:mb-6">
+                    <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Users</h1>
+                    <p className="mt-1 text-sm text-gray-500">
+                        {totalUsers} registered user{totalUsers === 1 ? "" : "s"}
+                    </p>
                 </div>
 
-                {/* Desktop table */}
-                <div className="hidden lg:block overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="bg-gray-50 text-left text-gray-500 font-medium whitespace-nowrap">
-                                <th className="px-6 py-3">User ID</th>
-                                <th className="px-6 py-3">Name</th>
-                                <th className="px-6 py-3">Email</th>
-                                <th className="px-6 py-3">Phone Number</th>
-                                <th className="px-6 py-3">Registered</th>
-                                <th className="px-6 py-3 text-center">Inspections</th>
-                                <th className="px-6 py-3">KYC Status</th>
-                                <th className="px-6 py-3">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {users.map((user) => (
-                                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
-                                        {user.id}
-                                    </td>
-                                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
-                                        {user.name}
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600">{user.email}</td>
-                                    <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
-                                        {user.phone}
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
-                                        {user.registered}
-                                    </td>
-                                    <td className="px-6 py-4 text-center text-gray-700">
-                                        {user.inspections}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <KycBadge status={user.kyc} />
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <button
-                                                onClick={() => viewUser(user.id)}
-                                                className="text-blue-600 hover:text-blue-700 font-medium"
-                                            >
-                                                View
-                                            </button>
-                                            <button className="text-red-600 hover:text-red-700 font-medium">
-                                                Suspend
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Mobile / tablet cards */}
-                <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:hidden">
-                    {users.map((user) => (
-                        <div
-                            key={user.id}
-                            className="rounded-xl border border-gray-200 p-4"
-                        >
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                    <p className="font-medium text-gray-900 truncate">
-                                        {user.name}
-                                    </p>
-                                    <p className="text-xs text-gray-500 mt-0.5">{user.id}</p>
-                                </div>
-                                <KycBadge status={user.kyc} />
-                            </div>
-
-                            <dl className="mt-3 space-y-1.5 text-sm">
-                                <Row label="Email">
-                                    <span className="break-all">{user.email}</span>
-                                </Row>
-                                <Row label="Phone">{user.phone}</Row>
-                                <Row label="Registered">{user.registered}</Row>
-                                <Row label="Inspections">{user.inspections}</Row>
-                            </dl>
-
-                            <div className="mt-4 flex items-center gap-5 border-t border-gray-100 pt-3 text-sm">
-                                <button
-                                    onClick={() => viewUser(user.id)}
-                                    className="text-blue-600 hover:text-blue-700 font-medium"
-                                >
-                                    View
-                                </button>
-                                <button className="text-red-600 hover:text-red-700 font-medium">
-                                    Suspend
-                                </button>
-                            </div>
+                <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+                    <div className="border-b border-gray-100 p-4">
+                        <div className="relative w-full md:max-w-md">
+                            <Search
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                size={18}
+                            />
+                            <input
+                                type="text"
+                                placeholder="Search"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
                         </div>
-                    ))}
-                </div>
+                    </div>
 
-                <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
-                    <p className="text-sm text-gray-500">1 of 10 pages</p>
-                    <div className="flex items-center gap-1">
-                        <button className="w-8 h-8 rounded-md bg-gray-900 text-white text-sm font-medium">
-                            1
-                        </button>
-                        <button className="w-8 h-8 rounded-md text-gray-600 hover:bg-gray-100 text-sm">
-                            2
-                        </button>
-                        <button className="w-8 h-8 rounded-md text-gray-600 hover:bg-gray-100 text-sm">
-                            3
-                        </button>
+                    {!filteredUsers.length ? (
+                        <EmptyState
+                            title="No users found"
+                            description="There are no registered users in the system yet."
+                        />
+                    ) : (
+                        <>
+                            {/* Desktop table */}
+                            <div className="hidden overflow-x-auto lg:block">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-gray-50 text-left text-gray-500 whitespace-nowrap font-medium">
+                                            <th className="px-6 py-3">User ID</th>
+                                            <th className="px-6 py-3">Name</th>
+                                            <th className="px-6 py-3">Email</th>
+                                            <th className="px-6 py-3">Phone Number</th>
+                                            <th className="px-6 py-3">Registered</th>
+                                            <th className="px-6 py-3 text-center">Inspections</th>
+                                            <th className="px-6 py-3">KYC Status</th>
+                                            <th className="px-6 py-3">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {filteredUsers.map((user) => {
+                                            const userId = user?.id ?? user?.display_id ?? "";
+                                            const fullName =
+                                                `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() ||
+                                                "Unknown User";
+
+                                            return (
+                                                <tr
+                                                    key={userId || fullName}
+                                                    className="transition-colors hover:bg-gray-50"
+                                                >
+                                                    <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
+                                                        {user?.display_id || "—"}
+                                                    </td>
+                                                    <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
+                                                        {fullName}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-gray-600">
+                                                        {user?.email || "—"}
+                                                    </td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-gray-600">
+                                                        {user?.phone || "—"}
+                                                    </td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-gray-600">
+                                                        {formatDate(user?.registered_at)}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center text-gray-700">
+                                                        {user?.inspection_count ?? 0}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <KycBadge status={user?.kyc_status} />
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => viewUser(userId)}
+                                                                className="font-medium text-blue-600 hover:text-blue-700"
+                                                            >
+                                                                View
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="font-medium text-red-600 hover:text-red-700"
+                                                            >
+                                                                Suspend
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile cards */}
+                            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:hidden">
+                                {filteredUsers.map((user) => {
+                                    const userId = user?.id ?? user?.display_id ?? "";
+                                    const fullName =
+                                        `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() ||
+                                        "Unknown User";
+
+                                    return (
+                                        <div
+                                            key={userId || fullName}
+                                            className="rounded-xl border border-gray-200 p-4"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-sm font-semibold text-gray-900">
+                                                        {fullName}
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                        {user?.email || "No email"}
+                                                    </p>
+                                                </div>
+                                                <KycBadge status={user?.kyc_status} />
+                                            </div>
+
+                                            <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-gray-600">
+                                                <div>
+                                                    <p className="text-[10px] uppercase tracking-wide text-gray-400">
+                                                        User ID
+                                                    </p>
+                                                    <p className="mt-1 font-medium text-gray-800">
+                                                        {user?.display_id ?? (userId || "—")}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] uppercase tracking-wide text-gray-400">
+                                                        Registered
+                                                    </p>
+                                                    <p className="mt-1 font-medium text-gray-800">
+                                                        {formatDate(user?.registered_at)}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-3 text-sm">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => viewUser(userId)}
+                                                    className="font-medium text-blue-600 hover:text-blue-700"
+                                                >
+                                                    View
+                                                </button>
+                                                <span className="text-gray-500">
+                                                    {user?.inspection_count ?? 0} inspections
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
+
+                    <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-4">
+                        <p className="text-sm text-gray-500">
+                            Page {page} of {totalPages}
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                                disabled={!hasPreviousPage || page === 1}
+                                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPage((prev) => prev + 1)}
+                                disabled={!hasNextPage}
+                                className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+                            >
+                                Next
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 

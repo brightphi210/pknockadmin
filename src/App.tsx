@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import DashNavbar from './components/DashNavbar'
 import DashSideBar from './components/DashSideBar'
+import { ToastProvider } from './components/UI/Toast'
 import Content from './content/Content'
 import './index.css'
 import Login from './pages/Login'
@@ -26,7 +27,7 @@ const Dashboard = () => {
 
 const App = () => {
     return (
-        <>
+        <ToastProvider>
             <AuthProvider>
                 <BrowserRouter>
                     <Routes>
@@ -36,7 +37,7 @@ const App = () => {
                     </Routes>
                 </BrowserRouter>
             </AuthProvider>
-        </>
+        </ToastProvider>
     )
 }
 
