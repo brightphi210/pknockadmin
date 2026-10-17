@@ -26,7 +26,7 @@ const navGroups = [
     {
         label: 'Property Operations',
         items: [
-            { label: 'Properties', to: '/admin/properties', icon: Building, badge: 7 },
+            { label: 'Properties', to: '/admin/properties', icon: Building },
             { label: 'Property Owners', to: '/admin/property-owners', icon: UserRound },
             { label: 'Verification Officers', to: '/admin/verification-officers', icon: ShieldQuestion },
             { label: 'Inspections', to: '/admin/inspections', icon: Search },
@@ -34,7 +34,7 @@ const navGroups = [
     },
     {
         label: 'User Management',
-        items: [{ label: 'Users', to: '/admin/users', icon: Users, badge: 4 }],
+        items: [{ label: 'Users', to: '/admin/users', icon: Users }],
     },
     {
         label: 'Finance & Support',
@@ -128,11 +128,7 @@ const DashSideBar = ({ mobileOpen, onCloseMobile }: DashSideBarProps) => {
                                                 <>
                                                     <item.icon size={18} className="shrink-0" />
                                                     {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
-                                                    {!collapsed && item.badge ? (
-                                                        <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[11px] font-semibold text-white">
-                                                            {item.badge}
-                                                        </span>
-                                                    ) : null}
+
                                                     {isActive && (
                                                         <span className="absolute right-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-l-full bg-blue-600" />
                                                     )}

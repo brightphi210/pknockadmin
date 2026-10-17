@@ -1,11 +1,17 @@
-import { Search } from "lucide-react";
+import { Ban, RotateCcw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LoadingOverlay from "../../components/LoadingOverlay";
+import ActionsMenu from "../../components/UI/ActionMenu";
+import ConfirmModal from "../../components/UI/ConfirmModal";
+import { useToast } from "../../components/UI/Toast";
+import { useReactivateUser, useSuspendUser } from "../../hooks/mutations/allMutation";
+import { parseApiError } from "../../hooks/parseapierror";
 import { useGetUsers } from "../../hooks/queries/allQueries";
 
 type UserRecord = {
     id?: string;
+    user_id?: string;
     display_id?: string;
     first_name?: string;
     last_name?: string;
@@ -16,6 +22,7 @@ type UserRecord = {
     kyc_status?: string;
     role?: string;
     is_active?: boolean;
+    active?: boolean;
 };
 
 const formatDate = (value?: string) => {
@@ -35,6 +42,18 @@ const normalizeStatus = (status?: string) => {
         .replace(/_/g, " ")
         .replace(/\b\w/g, (char) => char.toUpperCase());
 };
+
+const isUserActive = (user: UserRecord) => {
+    if (typeof user.is_active === "boolean") return user.is_active;
+    if (typeof user.active === "boolean") return user.active;
+    return true;
+};
+
+const getUserKey = (user: UserRecord) =>
+    user?.user_id ?? user?.id ?? user?.display_id ?? "";
+
+const getFullName = (user?: UserRecord | null) =>
+    `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim();
 
 const KycBadge = ({ status }: { status?: string }) => {
     const value = normalizeStatus(status);
@@ -56,40 +75,53 @@ const KycBadge = ({ status }: { status?: string }) => {
     );
 };
 
+const StatusBadge = ({ active }: { active: boolean }) => (
+    <span
+        className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${active ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+            }`}
+    >
+        <span
+            className={`h-1.5 w-1.5 rounded-full ${active ? "bg-green-500" : "bg-amber-500"}`}
+        />
+        {active ? "Active" : "Suspended"}
+    </span>
+);
+
 const EmptyState = ({
     title,
     description,
-    onAction,
 }: {
     title: string;
     description: string;
     onAction?: () => void;
 }) => (
-    <div className="flex min-h-85 items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
+    <div className="flex min-h-80 items-center justify-center p-6">
+        <div className="w-full max-w-md bg-white px-6 py-10 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-lg font-semibold text-slate-700">
                 !
             </div>
             <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
             <p className="mt-2 text-sm text-slate-500">{description}</p>
-            {onAction && (
-                <button
-                    type="button"
-                    onClick={onAction}
-                    className="mt-5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-                >
-                    Refresh
-                </button>
-            )}
         </div>
     </div>
 );
 
+
 const Users = () => {
     const navigate = useNavigate();
+    const toast = useToast();
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+    const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
+    const [action, setAction] = useState<"suspend" | "reactivate" | null>(null);
+    const [actionError, setActionError] = useState("");
+
     const { users: response, isLoading, isError, refetch } = useGetUsers(page);
+    const suspendMutation = useSuspendUser();
+    const reactivateMutation = useReactivateUser();
+    console.log("users response", response?.data);
 
     const users = useMemo(() => {
         const payload = response?.data ?? response;
@@ -98,21 +130,32 @@ const Users = () => {
             : Array.isArray(payload)
                 ? payload
                 : [];
-
         return list as UserRecord[];
     }, [response]);
 
-    const payload = (response?.data ?? response) as { count?: number; previous?: string | null; next?: string | null; results?: UserRecord[] } | UserRecord[] | undefined;
-    const totalUsers = Number(payload && typeof payload === "object" && "count" in payload ? payload.count ?? users.length : users.length ?? 0);
-    const hasPreviousPage = Boolean(payload && typeof payload === "object" && "previous" in payload && payload.previous);
-    const hasNextPage = Boolean(payload && typeof payload === "object" && "next" in payload && payload.next);
+    const payload = (response?.data ?? response) as
+        | { count?: number; previous?: string | null; next?: string | null; results?: UserRecord[] }
+        | UserRecord[]
+        | undefined;
+    const totalUsers = Number(
+        payload && typeof payload === "object" && "count" in payload
+            ? (payload.count ?? users.length)
+            : (users.length ?? 0)
+    );
+    const hasPreviousPage = Boolean(
+        payload && typeof payload === "object" && "previous" in payload && payload.previous
+    );
+    const hasNextPage = Boolean(
+        payload && typeof payload === "object" && "next" in payload && payload.next
+    );
     const totalPages = Math.max(1, Math.ceil(totalUsers / Math.max(users.length || 1, 1)));
+    const suspendedCount = users.filter((u) => !isUserActive(u)).length;
 
     const filteredUsers = useMemo(() => {
         if (!search.trim()) return users;
         const term = search.toLowerCase();
         return users.filter((user) => {
-            const name = `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.toLowerCase();
+            const name = getFullName(user).toLowerCase();
             const match = `${name} ${user?.email ?? ""} ${user?.phone ?? ""}`.toLowerCase();
             return match.includes(term);
         });
@@ -122,6 +165,49 @@ const Users = () => {
         if (!id) return;
         navigate(`/admin/users/${id}`);
     };
+
+    /* ----- suspend / reactivate ----- */
+
+    const openAction = (user: UserRecord, type: "suspend" | "reactivate") => {
+        setSelectedUser(user);
+        setActionError("");
+        setAction(type);
+    };
+
+    const closeAction = () => {
+        if (suspendMutation.isPending || reactivateMutation.isPending) return;
+        setAction(null);
+        setSelectedUser(null);
+        setActionError("");
+    };
+
+    const handleAction = async (reason: string) => {
+        if (!selectedUser || !action || !reason) return;
+
+        // Prefer user_id (accounts/users/:id), fall back to id
+        const id = selectedUser.user_id ?? selectedUser.id;
+        if (!id) return;
+
+        const mutation = action === "suspend" ? suspendMutation : reactivateMutation;
+        const fullName = getFullName(selectedUser) || "User";
+
+        try {
+            await mutation.mutateAsync({ id, reason });
+            toast.success(action === "suspend" ? "Account suspended" : "Account reactivated", {
+                message: fullName,
+            });
+            setAction(null);
+            setSelectedUser(null);
+            setActionError("");
+            refetch();
+        } catch (err) {
+            const parsed = parseApiError(err, `Failed to ${action} account.`);
+            setActionError(parsed.message);
+            toast.error(`Could not ${action} account`, { message: parsed.message });
+        }
+    };
+
+    /* ----- render ----- */
 
     if (isError) {
         return (
@@ -133,14 +219,17 @@ const Users = () => {
         );
     }
 
+    const selectedName = getFullName(selectedUser) || "this user";
+
     return (
         <>
             <LoadingOverlay visible={isLoading} />
             <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
                 <div className="mb-5 sm:mb-6">
-                    <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Users</h1>
+                    <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl">Users</h1>
                     <p className="mt-1 text-sm text-gray-500">
                         {totalUsers} registered user{totalUsers === 1 ? "" : "s"}
+                        {suspendedCount > 0 && <> · {suspendedCount} suspended (this page)</>}
                     </p>
                 </div>
 
@@ -164,7 +253,11 @@ const Users = () => {
                     {!filteredUsers.length ? (
                         <EmptyState
                             title="No users found"
-                            description="There are no registered users in the system yet."
+                            description={
+                                search
+                                    ? "No users on this page match your search."
+                                    : "There are no registered users in the system yet."
+                            }
                         />
                     ) : (
                         <>
@@ -172,7 +265,7 @@ const Users = () => {
                             <div className="hidden overflow-x-auto lg:block">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="bg-gray-50 text-left text-gray-500 whitespace-nowrap font-medium">
+                                        <tr className="whitespace-nowrap bg-gray-50 text-left font-medium text-gray-500">
                                             <th className="px-6 py-3">User ID</th>
                                             <th className="px-6 py-3">Name</th>
                                             <th className="px-6 py-3">Email</th>
@@ -180,20 +273,22 @@ const Users = () => {
                                             <th className="px-6 py-3">Registered</th>
                                             <th className="px-6 py-3 text-center">Inspections</th>
                                             <th className="px-6 py-3">KYC Status</th>
+                                            <th className="px-6 py-3">Status</th>
                                             <th className="px-6 py-3">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {filteredUsers.map((user) => {
-                                            const userId = user?.id ?? user?.display_id ?? "";
-                                            const fullName =
-                                                `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() ||
-                                                "Unknown User";
+                                            const userKey = getUserKey(user);
+                                            const menuId = `table-${userKey}`;
+                                            const fullName = getFullName(user) || "Unknown User";
+                                            const active = isUserActive(user);
 
                                             return (
                                                 <tr
-                                                    key={userId || fullName}
-                                                    className="transition-colors hover:bg-gray-50"
+                                                    key={userKey || fullName}
+                                                    className={`transition-colors hover:bg-gray-50 ${active ? "" : "bg-gray-50/60"
+                                                        }`}
                                                 >
                                                     <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
                                                         {user?.display_id || "—"}
@@ -217,21 +312,28 @@ const Users = () => {
                                                         <KycBadge status={user?.kyc_status} />
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => viewUser(userId)}
-                                                                className="font-medium text-blue-600 hover:text-blue-700"
-                                                            >
-                                                                View
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                className="font-medium text-red-600 hover:text-red-700"
-                                                            >
-                                                                Suspend
-                                                            </button>
-                                                        </div>
+                                                        <StatusBadge active={active} />
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <ActionsMenu
+                                                            open={openMenuId === menuId}
+                                                            onToggle={() =>
+                                                                setOpenMenuId((prev) =>
+                                                                    prev === menuId ? null : menuId
+                                                                )
+                                                            }
+                                                            onClose={() => setOpenMenuId(null)}
+                                                            onView={() =>
+                                                                viewUser(user?.id ?? user?.user_id)
+                                                            }
+                                                            onSuspend={() =>
+                                                                openAction(user, "suspend")
+                                                            }
+                                                            onReactivate={() =>
+                                                                openAction(user, "reactivate")
+                                                            }
+                                                            isActive={active}
+                                                        />
                                                     </td>
                                                 </tr>
                                             );
@@ -243,15 +345,16 @@ const Users = () => {
                             {/* Mobile cards */}
                             <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:hidden">
                                 {filteredUsers.map((user) => {
-                                    const userId = user?.id ?? user?.display_id ?? "";
-                                    const fullName =
-                                        `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() ||
-                                        "Unknown User";
+                                    const userKey = getUserKey(user);
+                                    const menuId = `card-${userKey}`;
+                                    const fullName = getFullName(user) || "Unknown User";
+                                    const active = isUserActive(user);
 
                                     return (
                                         <div
-                                            key={userId || fullName}
-                                            className="rounded-xl border border-gray-200 p-4"
+                                            key={userKey || fullName}
+                                            className={`rounded-xl border border-gray-200 p-4 ${active ? "" : "bg-gray-50/60"
+                                                }`}
                                         >
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0">
@@ -262,7 +365,24 @@ const Users = () => {
                                                         {user?.email || "No email"}
                                                     </p>
                                                 </div>
+                                                <ActionsMenu
+                                                    open={openMenuId === menuId}
+                                                    onToggle={() =>
+                                                        setOpenMenuId((prev) =>
+                                                            prev === menuId ? null : menuId
+                                                        )
+                                                    }
+                                                    onClose={() => setOpenMenuId(null)}
+                                                    onView={() => viewUser(user?.id ?? user?.user_id)}
+                                                    onSuspend={() => openAction(user, "suspend")}
+                                                    onReactivate={() => openAction(user, "reactivate")}
+                                                    isActive={active}
+                                                />
+                                            </div>
+
+                                            <div className="mt-3 flex flex-wrap items-center gap-2">
                                                 <KycBadge status={user?.kyc_status} />
+                                                <StatusBadge active={active} />
                                             </div>
 
                                             <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-gray-600">
@@ -271,7 +391,7 @@ const Users = () => {
                                                         User ID
                                                     </p>
                                                     <p className="mt-1 font-medium text-gray-800">
-                                                        {user?.display_id ?? (userId || "—")}
+                                                        {user?.display_id ?? (userKey || "—")}
                                                     </p>
                                                 </div>
                                                 <div>
@@ -285,13 +405,6 @@ const Users = () => {
                                             </div>
 
                                             <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-3 text-sm">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => viewUser(userId)}
-                                                    className="font-medium text-blue-600 hover:text-blue-700"
-                                                >
-                                                    View
-                                                </button>
                                                 <span className="text-gray-500">
                                                     {user?.inspection_count ?? 0} inspections
                                                 </span>
@@ -328,6 +441,52 @@ const Users = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Suspend */}
+            <ConfirmModal
+                open={action === "suspend" && !!selectedUser}
+                onClose={closeAction}
+                onConfirm={handleAction}
+                tone="danger"
+                icon={<Ban size={26} />}
+                title="Suspend Account"
+                description={
+                    <>
+                        Suspending{" "}
+                        <span className="font-medium text-slate-800">{selectedName}</span>
+                        ’s account will block them from signing in.
+                    </>
+                }
+                reasonLabel="Reason for suspension"
+                reasonPlaceholder="e.g. Multiple complaints received, pending investigation…"
+                confirmLabel="Suspend Account"
+                loadingLabel="Suspending…"
+                loading={suspendMutation.isPending}
+                error={actionError}
+            />
+
+            {/* Reactivate */}
+            <ConfirmModal
+                open={action === "reactivate" && !!selectedUser}
+                onClose={closeAction}
+                onConfirm={handleAction}
+                tone="success"
+                icon={<RotateCcw size={26} />}
+                title="Reactivate Account"
+                description={
+                    <>
+                        Reactivating{" "}
+                        <span className="font-medium text-slate-800">{selectedName}</span>
+                        ’s account will restore their access.
+                    </>
+                }
+                reasonLabel="Reason for reactivating"
+                reasonPlaceholder="e.g. Investigation completed, no further issues found…"
+                confirmLabel="Reactivate Account"
+                loadingLabel="Reactivating…"
+                loading={reactivateMutation.isPending}
+                error={actionError}
+            />
         </>
     );
 };

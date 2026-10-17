@@ -1,269 +1,495 @@
-import { ArrowLeft, MoreVertical, Paperclip, Search, Send } from "lucide-react";
-import { useState } from "react";
+import { Paperclip, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import LoadingOverlay from "../../components/LoadingOverlay";
+import Modal from "../../components/UI/Modal";
+import { useToast } from "../../components/UI/Toast";
+import { useReplyComplaint } from "../../hooks/mutations/allMutation";
+import { parseApiError } from "../../hooks/parseapierror";
+import { useGetComplaints } from "../../hooks/queries/allQueries";
 
-const conversations = [
-    {
-        id: 1,
-        name: "P-knock Admin",
-        preview: "The platform deducted ₦92,500 instead of ₦42...",
-        time: "2:34 PM",
-        unread: 0,
-        avatar: "P",
-        color: "bg-blue-100 text-blue-700",
-    },
-    {
-        id: 2,
-        name: "Sarah Johnson",
-        preview: "The apartment has been without hot water...",
-        time: "2:34 PM",
-        unread: 3,
-        avatar: "S",
-        color: "bg-purple-500 text-white",
-    },
-    {
-        id: 3,
-        name: "Michael Philip",
-        preview: "I have not had any running water in my unit...",
-        time: "2:34 PM",
-        unread: 3,
-        avatar: "M",
-        color: "bg-pink-500 text-white",
-    },
-    {
-        id: 4,
-        name: "Emily Davis",
-        preview: "It's been three days without any water sup...",
-        time: "2:34 PM",
-        unread: 3,
-        avatar: "E",
-        color: "bg-orange-400 text-white",
-    },
-    {
-        id: 5,
-        name: "James Wilson",
-        preview: "There has been a complete water outage in...",
-        time: "2:34 PM",
-        unread: 3,
-        avatar: "J",
-        color: "bg-red-500 text-white",
-    },
-    {
-        id: 6,
-        name: "Chinasa David",
-        preview: "I am experiencing a lack of running water in...",
-        time: "2:34 PM",
-        unread: 3,
-        avatar: "C",
-        color: "bg-teal-500 text-white",
-    },
-    {
-        id: 7,
-        name: "John Peter",
-        preview: "For three days now, there has been no wat...",
-        time: "2:34 PM",
-        unread: 3,
-        avatar: "J",
-        color: "bg-blue-500 text-white",
-    },
-];
+type ComplaintRecord = {
+    id?: string;
+    display_id?: string;
+    property_id?: string;
+    seeker_profile_id?: string;
+    category?: string;
+    description?: string;
+    has_evidence?: boolean;
+    status?: string;
+    sla_due_at?: string | null;
+    resolved_at?: string | null;
+    created_at?: string;
+    updated_at?: string;
+};
+
+/* ---------- helpers ---------- */
+
+const formatDateTime = (value?: string | null) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    const day = new Intl.DateTimeFormat("en-NG", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    }).format(date);
+    const time = new Intl.DateTimeFormat("en-NG", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+    }).format(date);
+    return `${day} • ${time}`;
+};
+
+const humanize = (value?: string) => {
+    if (!value) return "Unknown";
+    return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+const RESOLVED_STATUSES = ["resolved", "closed"];
+
+const isOverdue = (c: ComplaintRecord) =>
+    Boolean(c.sla_due_at) &&
+    !RESOLVED_STATUSES.includes((c.status ?? "").toLowerCase()) &&
+    new Date(c.sla_due_at as string).getTime() < Date.now();
+
+const statusStyles: Record<string, string> = {
+    submitted: "bg-blue-100 text-blue-700",
+    open: "bg-blue-100 text-blue-700",
+    under_review: "bg-purple-100 text-purple-700",
+    in_progress: "bg-purple-100 text-purple-700",
+    replied: "bg-amber-100 text-amber-700",
+    resolved: "bg-green-100 text-green-700",
+    closed: "bg-gray-100 text-gray-600",
+    rejected: "bg-red-100 text-red-700",
+};
+
+const StatusBadge = ({ status }: { status?: string }) => (
+    <span
+        className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${statusStyles[(status ?? "").toLowerCase()] || "bg-gray-100 text-gray-600"
+            }`}
+    >
+        {humanize(status)}
+    </span>
+);
+
+const EmptyState = ({ title, description }: { title: string; description: string }) => (
+    <div className="flex min-h-80 items-center justify-center p-6">
+        <div className="w-full max-w-md bg-white px-6 py-10 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-lg font-semibold text-slate-700">
+                !
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+            <p className="mt-2 text-sm text-slate-500">{description}</p>
+        </div>
+    </div>
+);
+
+const Detail = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div>
+        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{label}</p>
+        <div className="mt-1 text-sm text-gray-800">{children}</div>
+    </div>
+);
+
+const MAX_REPLY = 2000;
+
+/* ---------- page ---------- */
 
 const SupportComplaints = () => {
-    const [message, setMessage] = useState("");
-    const [activeId, setActiveId] = useState(2);
-    // On small screens only one pane is visible at a time.
-    const [mobileView, setMobileView] = useState<"list" | "chat">("list");
+    const toast = useToast();
+    const [search, setSearch] = useState("");
+    const [page, setPage] = useState(1);
 
-    const active =
-        conversations.find((c) => c.id === activeId) ?? conversations[0];
+    const [selected, setSelected] = useState<ComplaintRecord | null>(null);
+    const [reply, setReply] = useState("");
+    const [replyError, setReplyError] = useState("");
 
-    const openChat = (id: number) => {
-        setActiveId(id);
-        setMobileView("chat");
+    const { complaints: response, isLoading, isError, refetch } = useGetComplaints(page);
+    const replyMutation = useReplyComplaint();
+
+    const complaints = useMemo(() => {
+        const payload = response?.data ?? response;
+        const list = Array.isArray(payload?.results)
+            ? payload.results
+            : Array.isArray(payload)
+                ? payload
+                : [];
+        return list as ComplaintRecord[];
+    }, [response]);
+
+    const payload = (response?.data ?? response) as
+        | { count?: number; previous?: string | null; next?: string | null; results?: ComplaintRecord[] }
+        | ComplaintRecord[]
+        | undefined;
+    const totalCount = Number(
+        payload && typeof payload === "object" && "count" in payload
+            ? (payload.count ?? complaints.length)
+            : (complaints.length ?? 0)
+    );
+    const hasPreviousPage = Boolean(
+        payload && typeof payload === "object" && "previous" in payload && payload.previous
+    );
+    const hasNextPage = Boolean(
+        payload && typeof payload === "object" && "next" in payload && payload.next
+    );
+    const totalPages = Math.max(1, Math.ceil(totalCount / Math.max(complaints.length || 1, 1)));
+
+    const filtered = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        if (!term) return complaints;
+        return complaints.filter((c) =>
+            `${c.display_id ?? ""} ${humanize(c.category)} ${c.description ?? ""} ${humanize(c.status)}`
+                .toLowerCase()
+                .includes(term)
+        );
+    }, [complaints, search]);
+
+    /* ----- modal ----- */
+
+    const openComplaint = (c: ComplaintRecord) => {
+        setSelected(c);
+        setReply("");
+        setReplyError("");
     };
 
-    return (
-        <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
-            <div className="mb-4 sm:mb-6">
-                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
-                    Support & Complaints
-                </h1>
-                <p className="text-sm text-gray-500 mt-1">
-                    Submit and track your support tickets.
-                </p>
-            </div>
+    const closeModal = () => {
+        if (replyMutation.isPending) return;
+        setSelected(null);
+        setReply("");
+        setReplyError("");
+    };
 
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-[calc(100dvh-11rem)] min-h-[440px] md:h-[calc(100vh-180px)] flex">
-                {/* Left – Chat list */}
-                <div
-                    className={`w-full md:w-80 md:flex-shrink-0 md:border-r border-gray-200 flex-col ${mobileView === "chat" ? "hidden md:flex" : "flex"
-                        }`}
-                >
-                    <div className="p-4 border-b border-gray-100">
-                        <h2 className="font-semibold text-gray-900 mb-3">Chat</h2>
-                        <div className="relative">
+    const handleSend = async () => {
+        if (!selected?.id) return;
+        const message = reply.trim();
+        if (!message) {
+            setReplyError("Please type a reply before sending.");
+            return;
+        }
+
+        try {
+            await replyMutation.mutateAsync({ id: selected.id, message });
+            toast.success("Reply sent", {
+                message: "The user will receive your reply by email.",
+            });
+            setSelected(null);
+            setReply("");
+            setReplyError("");
+            refetch();
+        } catch (err) {
+            const parsed = parseApiError(err, "Failed to send reply.");
+            setReplyError(parsed.message);
+            toast.error("Could not send reply", { message: parsed.message });
+        }
+    };
+
+    /* ----- render ----- */
+
+    if (isError) {
+        return (
+            <div className="space-y-4 p-4 sm:p-6">
+                <EmptyState
+                    title="Could not load complaints"
+                    description="Please refresh the page or try again in a few moments."
+                />
+                <div className="flex justify-center">
+                    <button
+                        type="button"
+                        onClick={() => refetch()}
+                        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                    >
+                        Retry
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    const sending = replyMutation.isPending;
+
+    return (
+        <>
+            <LoadingOverlay visible={isLoading} />
+            <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+                <div className="mb-5 sm:mb-6">
+                    <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl">
+                        Support & Complaints
+                    </h1>
+                    <p className="mt-1 text-sm text-gray-500">
+                        {totalCount} complaint{totalCount === 1 ? "" : "s"} total
+                    </p>
+                </div>
+
+                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                    {/* Search */}
+                    <div className="border-b border-gray-100 p-4">
+                        <div className="relative w-full md:max-w-md">
                             <Search
                                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                                size={16}
+                                size={18}
                             />
                             <input
                                 type="text"
-                                placeholder="Search"
-                                className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Search by ID, category or description"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto">
-                        {conversations.map((c) => (
-                            <button
-                                key={c.id}
-                                type="button"
-                                onClick={() => openChat(c.id)}
-                                className={`w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-gray-50 ${c.id === activeId ? "md:bg-gray-50" : ""
-                                    }`}
-                            >
-                                <div
-                                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${c.color}`}
-                                >
-                                    {c.avatar}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <p className="text-sm font-medium text-gray-900 truncate">
-                                            {c.name}
-                                        </p>
-                                        <p className="text-xs text-gray-400 flex-shrink-0">
-                                            {c.time}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center justify-between mt-0.5">
-                                        <p className="text-xs text-gray-500 truncate">{c.preview}</p>
-                                        {c.unread > 0 && (
-                                            <span className="ml-2 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center flex-shrink-0">
-                                                {c.unread}
+                    {!filtered.length ? (
+                        <EmptyState
+                            title="No complaints found"
+                            description={
+                                search
+                                    ? "No complaints on this page match your search."
+                                    : "There are no complaints to display yet."
+                            }
+                        />
+                    ) : (
+                        <>
+                            {/* Desktop table */}
+                            <div className="hidden overflow-x-auto lg:block">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="whitespace-nowrap bg-gray-50 text-left font-medium text-gray-500">
+                                            <th className="px-6 py-3">Complaint ID</th>
+                                            <th className="px-6 py-3">Category</th>
+                                            <th className="px-6 py-3">Description</th>
+                                            <th className="px-6 py-3">Submitted</th>
+                                            <th className="px-6 py-3">SLA Due</th>
+                                            <th className="px-6 py-3">Status</th>
+                                            <th className="px-6 py-3">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {filtered.map((c, index) => {
+                                            const overdue = isOverdue(c);
+                                            return (
+                                                <tr
+                                                    key={c.id ?? c.display_id ?? index}
+                                                    onClick={() => openComplaint(c)}
+                                                    className="cursor-pointer transition-colors hover:bg-gray-50"
+                                                >
+                                                    <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
+                                                        <span className="inline-flex items-center gap-1.5">
+                                                            {c.display_id || "—"}
+                                                            {c.has_evidence && (
+                                                                <Paperclip
+                                                                    size={13}
+                                                                    className="text-gray-400"
+                                                                    aria-label="Has evidence"
+                                                                />
+                                                            )}
+                                                        </span>
+                                                    </td>
+                                                    <td className="whitespace-nowrap px-6 py-4">
+                                                        <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                                                            {humanize(c.category)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <p className="max-w-xs truncate text-gray-600">
+                                                            {c.description || "—"}
+                                                        </p>
+                                                    </td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-gray-600">
+                                                        {formatDateTime(c.created_at)}
+                                                    </td>
+                                                    <td
+                                                        className={`whitespace-nowrap px-6 py-4 ${overdue ? "font-medium text-red-600" : "text-gray-600"
+                                                            }`}
+                                                    >
+                                                        {formatDateTime(c.sla_due_at)}
+                                                        {overdue && " (overdue)"}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <StatusBadge status={c.status} />
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                openComplaint(c);
+                                                            }}
+                                                            className="font-medium text-blue-600 hover:text-blue-700"
+                                                        >
+                                                            View
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile cards */}
+                            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:hidden">
+                                {filtered.map((c, index) => {
+                                    const overdue = isOverdue(c);
+                                    return (
+                                        <button
+                                            key={c.id ?? c.display_id ?? index}
+                                            type="button"
+                                            onClick={() => openComplaint(c)}
+                                            className="rounded-xl border border-gray-200 p-4 text-left transition-colors hover:bg-gray-50"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <p className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                                                    {c.display_id || "—"}
+                                                    {c.has_evidence && (
+                                                        <Paperclip size={13} className="text-gray-400" />
+                                                    )}
+                                                </p>
+                                                <StatusBadge status={c.status} />
+                                            </div>
+                                            <span className="mt-2 inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                                                {humanize(c.category)}
                                             </span>
-                                        )}
-                                    </div>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                                            <p className="mt-2 line-clamp-2 text-sm text-gray-600">
+                                                {c.description || "—"}
+                                            </p>
+                                            <div className="mt-3 flex items-center justify-between gap-2 border-t border-gray-100 pt-3 text-xs">
+                                                <span className="text-gray-500">
+                                                    {formatDateTime(c.created_at)}
+                                                </span>
+                                                {overdue && (
+                                                    <span className="font-medium text-red-600">SLA overdue</span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
 
-                {/* Right – Conversation */}
-                <div
-                    className={`flex-1 min-w-0 flex-col ${mobileView === "list" ? "hidden md:flex" : "flex"
-                        }`}
-                >
-                    {/* Chat header */}
-                    <div className="px-3 sm:px-5 py-3 sm:py-4 border-b border-gray-100 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    {/* Pagination */}
+                    <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-4 sm:px-6">
+                        <p className="text-sm text-gray-500">
+                            Page {page} of {totalPages}
+                        </p>
+                        <div className="flex items-center gap-2">
                             <button
                                 type="button"
-                                onClick={() => setMobileView("list")}
-                                className="md:hidden p-2 -ml-1 hover:bg-gray-100 rounded-lg flex-shrink-0"
-                                aria-label="Back to chats"
+                                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                                disabled={!hasPreviousPage || page === 1}
+                                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                <ArrowLeft size={18} className="text-gray-600" />
+                                Previous
                             </button>
-                            <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold flex-shrink-0 ${active.color}`}
-                            >
-                                {active.avatar}
-                            </div>
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <p className="font-semibold text-gray-900 truncate">
-                                        {active.name}
-                                    </p>
-                                    <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 whitespace-nowrap">
-                                        Property Owner
-                                    </span>
-                                </div>
-                                <p className="text-xs text-green-600 flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                    Active now
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                            <button className="p-2 hover:bg-gray-100 rounded-lg" aria-label="Search in chat">
-                                <Search size={18} className="text-gray-500" />
-                            </button>
-                            <button className="p-2 hover:bg-gray-100 rounded-lg relative" aria-label="More options">
-                                <MoreVertical size={18} className="text-gray-500" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Messages */}
-                    <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4">
-                        {/* Incoming */}
-                        <div className="flex gap-2 sm:gap-3">
-                            <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${active.color}`}
-                            >
-                                {active.avatar}
-                            </div>
-                            <div className="min-w-0 max-w-[85%] sm:max-w-md">
-                                <div className="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-2.5">
-                                    <p className="text-sm text-gray-800">
-                                        There has been no running water in the unit for three days.
-                                        This is urgent and affecting daily living.
-                                    </p>
-                                </div>
-                                <p className="text-xs text-gray-400 mt-1">Jul 26, 8:10 AM</p>
-                            </div>
-                        </div>
-
-                        {/* Outgoing */}
-                        <div className="flex justify-end gap-2 sm:gap-3">
-                            <div className="min-w-0 max-w-[85%] sm:max-w-md">
-                                <div className="bg-purple-600 text-white rounded-2xl rounded-tr-sm px-4 py-2.5">
-                                    <p className="text-sm">
-                                        We have notified the property owner and flagged this for
-                                        urgent resolution. A PVO will follow up today.
-                                    </p>
-                                </div>
-                                <p className="text-xs text-gray-400 mt-1 text-right">
-                                    Jul 26, 9:00 AM
-                                </p>
-                            </div>
-                            <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-semibold flex-shrink-0">
-                                ME
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Input */}
-                    <div className="p-3 sm:p-4 border-t border-gray-100">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                            <div className="flex-1 relative">
-                                <input
-                                    type="text"
-                                    placeholder="Type a message..."
-                                    value={message}
-                                    onChange={(e) => setMessage(e.target.value)}
-                                    className="w-full pl-4 pr-12 py-3 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                                <button
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600"
-                                    aria-label="Attach file"
-                                >
-                                    <Paperclip size={18} />
-                                </button>
-                            </div>
                             <button
-                                className="w-11 h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center flex-shrink-0"
-                                aria-label="Send message"
+                                type="button"
+                                onClick={() => setPage((prev) => prev + 1)}
+                                disabled={!hasNextPage}
+                                className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-gray-300"
                             >
-                                <Send size={18} />
+                                Next
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            {/* Complaint details + reply */}
+            <Modal
+                open={!!selected}
+                onClose={closeModal}
+                locked={sending}
+                size="lg"
+                title={selected?.display_id ? `Complaint ${selected.display_id}` : "Complaint"}
+                description="Your reply will be sent to the user's email address."
+                footer={
+                    <>
+                        <button
+                            type="button"
+                            onClick={closeModal}
+                            disabled={sending}
+                            className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50 sm:py-2"
+                        >
+                            Close
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSend}
+                            disabled={sending || !reply.trim()}
+                            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-60 sm:py-2"
+                        >
+                            {sending ? "Sending…" : "Send Reply"}
+                        </button>
+                    </>
+                }
+            >
+                {selected && (
+                    <div className="space-y-5">
+                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                            <Detail label="Category">{humanize(selected.category)}</Detail>
+                            <Detail label="Status">
+                                <StatusBadge status={selected.status} />
+                            </Detail>
+                            <Detail label="Evidence">
+                                {selected.has_evidence ? "Attached" : "None"}
+                            </Detail>
+                            <Detail label="Submitted">{formatDateTime(selected.created_at)}</Detail>
+                            <Detail label="SLA due">
+                                <span className={isOverdue(selected) ? "font-medium text-red-600" : ""}>
+                                    {formatDateTime(selected.sla_due_at)}
+                                </span>
+                            </Detail>
+                            <Detail label="Resolved">{formatDateTime(selected.resolved_at)}</Detail>
+                        </div>
+
+                        <div>
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                                Description
+                            </p>
+                            <div className="mt-1.5 max-h-56 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-gray-50 p-3.5 text-sm text-gray-800">
+                                {selected.description || "No description provided."}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label
+                                htmlFor="complaint-reply"
+                                className="text-[11px] font-medium uppercase tracking-wide text-gray-400"
+                            >
+                                Your reply
+                            </label>
+                            <textarea
+                                id="complaint-reply"
+                                rows={5}
+                                maxLength={MAX_REPLY}
+                                value={reply}
+                                disabled={sending}
+                                onChange={(e) => {
+                                    setReply(e.target.value);
+                                    setReplyError("");
+                                }}
+                                placeholder="Type your reply to the user…"
+                                className={`mt-1.5 w-full resize-none rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 disabled:bg-gray-50 ${replyError
+                                    ? "border-red-300 focus:ring-red-400"
+                                    : "border-gray-200 focus:ring-blue-500"
+                                    }`}
+                            />
+                            <div className="mt-1 flex items-start justify-between gap-3">
+                                {replyError ? (
+                                    <p className="text-xs text-red-600">{replyError}</p>
+                                ) : (
+                                    <span />
+                                )}
+                                <p className="flex-shrink-0 text-xs text-gray-400">
+                                    {reply.length}/{MAX_REPLY}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+        </>
     );
 };
 

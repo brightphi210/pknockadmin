@@ -1,7 +1,12 @@
-import { Search } from "lucide-react";
+import { Ban, RotateCcw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import LoadingOverlay from "../../components/LoadingOverlay";
+import ActionsMenu from "../../components/UI/ActionMenu";
+import ConfirmModal from "../../components/UI/ConfirmModal";
+import { useToast } from "../../components/UI/Toast";
+import { useReactivateUser, useSuspendUser } from "../../hooks/mutations/allMutation";
+import { parseApiError } from "../../hooks/parseapierror";
 import { useGetOwners } from "../../hooks/queries/allQueries";
 
 type OwnerRecord = {
@@ -33,7 +38,9 @@ const normalizeLabel = (value?: string) => {
 const getKycStatus = (record: OwnerRecord) => {
     const value = record.kyc_status || record.owner_verification || "Not Verified";
     const normalized = value.toLowerCase();
-    return ["verified", "approved", "passed"].some((term) => normalized.includes(term)) ? "Verified" : "Not Verified";
+    return ["verified", "approved", "passed"].some((term) => normalized.includes(term))
+        ? "Verified"
+        : "Not Verified";
 };
 
 const formatCurrency = (value?: string | number) => {
@@ -46,6 +53,26 @@ const formatCurrency = (value?: string | number) => {
         maximumFractionDigits: 2,
     }).format(numberValue);
 };
+
+const getOwnerName = (owner?: OwnerRecord | null, index = 0) =>
+    `${owner?.first_name ?? ""} ${owner?.last_name ?? ""}`.trim() ||
+    owner?.display_id ||
+    `Owner ${index + 1}`;
+
+const isOwnerActive = (owner: OwnerRecord) =>
+    (owner.account_status ?? "active").toLowerCase() !== "suspended";
+
+const StatusBadge = ({ active }: { active: boolean }) => (
+    <span
+        className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${active ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+            }`}
+    >
+        <span
+            className={`h-1.5 w-1.5 rounded-full ${active ? "bg-green-500" : "bg-amber-500"}`}
+        />
+        {active ? "Active" : "Suspended"}
+    </span>
+);
 
 const EmptyState = ({ title, description }: { title: string; description: string }) => (
     <div className="flex min-h-80 items-center justify-center p-6">
@@ -60,9 +87,20 @@ const EmptyState = ({ title, description }: { title: string; description: string
 );
 
 const PropertyOwners = () => {
+    const navigate = useNavigate();
+    const toast = useToast();
+
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+    const [selectedOwner, setSelectedOwner] = useState<OwnerRecord | null>(null);
+    const [action, setAction] = useState<"suspend" | "reactivate" | null>(null);
+    const [actionError, setActionError] = useState("");
+
     const { owners: response, isLoading, isError, refetch } = useGetOwners(page);
+    const suspendMutation = useSuspendUser();
+    const reactivateMutation = useReactivateUser();
 
     const owners = useMemo(() => {
         const payload = response?.data ?? response;
@@ -74,17 +112,29 @@ const PropertyOwners = () => {
         return list as OwnerRecord[];
     }, [response]);
 
-    const payload = (response?.data ?? response) as { count?: number; previous?: string | null; next?: string | null; results?: OwnerRecord[] } | OwnerRecord[] | undefined;
-    const totalOwners = Number(payload && typeof payload === "object" && "count" in payload ? payload.count ?? owners.length : owners.length ?? 0);
-    const hasPreviousPage = Boolean(payload && typeof payload === "object" && "previous" in payload && payload.previous);
-    const hasNextPage = Boolean(payload && typeof payload === "object" && "next" in payload && payload.next);
+    const payload = (response?.data ?? response) as
+        | { count?: number; previous?: string | null; next?: string | null; results?: OwnerRecord[] }
+        | OwnerRecord[]
+        | undefined;
+    const totalOwners = Number(
+        payload && typeof payload === "object" && "count" in payload
+            ? (payload.count ?? owners.length)
+            : (owners.length ?? 0)
+    );
+    const hasPreviousPage = Boolean(
+        payload && typeof payload === "object" && "previous" in payload && payload.previous
+    );
+    const hasNextPage = Boolean(
+        payload && typeof payload === "object" && "next" in payload && payload.next
+    );
     const totalPages = Math.max(1, Math.ceil(totalOwners / Math.max(owners.length || 1, 1)));
+    const suspendedCount = owners.filter((o) => !isOwnerActive(o)).length;
 
     const filtered = useMemo(() => {
         if (!search.trim()) return owners;
         const term = search.toLowerCase();
         return owners.filter((owner) => {
-            const fullName = `${owner.first_name ?? ""} ${owner.last_name ?? ""}`.trim().toLowerCase();
+            const fullName = getOwnerName(owner).toLowerCase();
             const combined = `${fullName} ${owner.email ?? ""} ${owner.phone ?? ""}`.toLowerCase();
             return combined.includes(term);
         });
@@ -95,11 +145,53 @@ const PropertyOwners = () => {
         "Not Verified": "bg-rose-50 text-rose-600 border border-rose-100",
     };
 
-    const statusStyles: Record<string, string> = {
-        Active: "bg-amber-50 text-amber-600 border border-amber-100",
-        Suspended: "bg-rose-50 text-rose-600 border border-rose-100",
-        Inactive: "bg-slate-100 text-slate-600 border border-slate-200",
+    const viewOwner = (id?: string) => {
+        if (!id) return;
+        navigate(`/admin/property-owners/${id}`);
     };
+
+    /* ----- suspend / reactivate ----- */
+
+    const openAction = (owner: OwnerRecord, type: "suspend" | "reactivate") => {
+        setSelectedOwner(owner);
+        setActionError("");
+        setAction(type);
+    };
+
+    const closeAction = () => {
+        if (suspendMutation.isPending || reactivateMutation.isPending) return;
+        setAction(null);
+        setSelectedOwner(null);
+        setActionError("");
+    };
+
+    const handleAction = async (reason: string) => {
+        if (!selectedOwner || !action || !reason) return;
+
+        // Suspend/reactivate work on the user account, so use user_id
+        const id = selectedOwner.user_id;
+        if (!id) return;
+
+        const mutation = action === "suspend" ? suspendMutation : reactivateMutation;
+        const fullName = getOwnerName(selectedOwner);
+
+        try {
+            await mutation.mutateAsync({ id, reason });
+            toast.success(action === "suspend" ? "Account suspended" : "Account reactivated", {
+                message: fullName,
+            });
+            setAction(null);
+            setSelectedOwner(null);
+            setActionError("");
+            refetch();
+        } catch (err) {
+            const parsed = parseApiError(err, `Failed to ${action} account.`);
+            setActionError(parsed.message);
+            toast.error(`Could not ${action} account`, { message: parsed.message });
+        }
+    };
+
+    /* ----- render ----- */
 
     if (isError) {
         return (
@@ -121,6 +213,8 @@ const PropertyOwners = () => {
         );
     }
 
+    const selectedName = selectedOwner ? getOwnerName(selectedOwner) : "this owner";
+
     return (
         <>
             <LoadingOverlay visible={isLoading} />
@@ -129,6 +223,7 @@ const PropertyOwners = () => {
                     <h1 className="text-xl font-extrabold text-slate-900 sm:text-2xl">Property Owners</h1>
                     <p className="mt-1 text-xs text-slate-500">
                         {totalOwners} registered property owner{totalOwners === 1 ? "" : "s"}
+                        {suspendedCount > 0 && <> · {suspendedCount} suspended (this page)</>}
                     </p>
                 </div>
 
@@ -150,6 +245,7 @@ const PropertyOwners = () => {
                         />
                     ) : (
                         <>
+                            {/* Desktop table */}
                             <div className="mt-5 hidden overflow-x-auto lg:block">
                                 <table className="w-full min-w-225 border-collapse">
                                     <thead>
@@ -168,11 +264,15 @@ const PropertyOwners = () => {
                                     <tbody className="divide-y divide-slate-100">
                                         {filtered.map((owner, index) => {
                                             const ownerId = owner.owner_profile_id ?? owner.user_id ?? owner.display_id ?? String(index);
-                                            const ownerName = `${owner.first_name ?? ""} ${owner.last_name ?? ""}`.trim() || owner.display_id || `Owner ${index + 1}`;
+                                            const menuId = `table-${ownerId}`;
+                                            const ownerName = getOwnerName(owner, index);
                                             const kyc = getKycStatus(owner);
-                                            const status = normalizeLabel(owner.account_status || "Active");
+                                            const active = isOwnerActive(owner);
                                             return (
-                                                <tr key={ownerId} className="text-xs">
+                                                <tr
+                                                    key={ownerId}
+                                                    className={`text-xs transition-colors hover:bg-slate-50 ${active ? "" : "bg-slate-50/60"}`}
+                                                >
                                                     <td className="whitespace-nowrap py-4 pr-4 text-sm font-semibold text-slate-900">{ownerName}</td>
                                                     <td className="py-4 pr-4">
                                                         <span className={`whitespace-nowrap rounded-full px-2.5 py-1 font-medium ${kycStyles[kyc]}`}>{kyc}</span>
@@ -183,17 +283,20 @@ const PropertyOwners = () => {
                                                     <td className="py-4 pr-4 text-slate-700">{owner.pending_properties ?? 0}</td>
                                                     <td className="whitespace-nowrap py-4 pr-4 font-medium text-slate-900">{formatCurrency(owner.total_earned)}</td>
                                                     <td className="py-4 pr-4">
-                                                        <span className={`rounded-full px-2.5 py-1 font-medium ${statusStyles[status] || "bg-slate-100 text-slate-600 border border-slate-200"}`}>{status}</span>
+                                                        <StatusBadge active={active} />
                                                     </td>
                                                     <td className="py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <Link to={`/admin/property-owners/${ownerId}`} className="font-medium text-blue-600 hover:text-blue-700">
-                                                                View
-                                                            </Link>
-                                                            <button type="button" className="font-medium text-rose-600 hover:text-rose-700">
-                                                                {status === "Suspended" ? "Reinstate" : "Suspend"}
-                                                            </button>
-                                                        </div>
+                                                        <ActionsMenu
+                                                            open={openMenuId === menuId}
+                                                            onToggle={() =>
+                                                                setOpenMenuId((prev) => (prev === menuId ? null : menuId))
+                                                            }
+                                                            onClose={() => setOpenMenuId(null)}
+                                                            onView={() => viewOwner(ownerId)}
+                                                            onSuspend={() => openAction(owner, "suspend")}
+                                                            onReactivate={() => openAction(owner, "reactivate")}
+                                                            isActive={active}
+                                                        />
                                                     </td>
                                                 </tr>
                                             );
@@ -202,23 +305,40 @@ const PropertyOwners = () => {
                                 </table>
                             </div>
 
+                            {/* Mobile cards */}
                             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
                                 {filtered.map((owner, index) => {
                                     const ownerId = owner.owner_profile_id ?? owner.user_id ?? owner.display_id ?? String(index);
-                                    const ownerName = `${owner.first_name ?? ""} ${owner.last_name ?? ""}`.trim() || owner.display_id || `Owner ${index + 1}`;
+                                    const menuId = `card-${ownerId}`;
+                                    const ownerName = getOwnerName(owner, index);
                                     const kyc = getKycStatus(owner);
-                                    const status = normalizeLabel(owner.account_status || "Active");
+                                    const active = isOwnerActive(owner);
                                     return (
-                                        <div key={ownerId} className="rounded-xl border border-slate-200 p-4">
+                                        <div
+                                            key={ownerId}
+                                            className={`rounded-xl border border-slate-200 p-4 ${active ? "" : "bg-slate-50/60"}`}
+                                        >
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0">
                                                     <p className="truncate text-sm font-semibold text-slate-900">{ownerName}</p>
                                                     <p className="mt-1 text-sm font-medium text-slate-900">{formatCurrency(owner.total_earned)}</p>
                                                 </div>
-                                                <div className="flex shrink-0 flex-col items-end gap-1.5 text-xs">
-                                                    <span className={`whitespace-nowrap rounded-full px-2.5 py-1 font-medium ${kycStyles[kyc]}`}>{kyc}</span>
-                                                    <span className={`rounded-full px-2.5 py-1 font-medium ${statusStyles[status] || "bg-slate-100 text-slate-600 border border-slate-200"}`}>{status}</span>
-                                                </div>
+                                                <ActionsMenu
+                                                    open={openMenuId === menuId}
+                                                    onToggle={() =>
+                                                        setOpenMenuId((prev) => (prev === menuId ? null : menuId))
+                                                    }
+                                                    onClose={() => setOpenMenuId(null)}
+                                                    onView={() => viewOwner(ownerId)}
+                                                    onSuspend={() => openAction(owner, "suspend")}
+                                                    onReactivate={() => openAction(owner, "reactivate")}
+                                                    isActive={active}
+                                                />
+                                            </div>
+
+                                            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                                                <span className={`whitespace-nowrap rounded-full px-2.5 py-1 font-medium ${kycStyles[kyc]}`}>{kyc}</span>
+                                                <StatusBadge active={active} />
                                             </div>
 
                                             <div className="mt-3 grid grid-cols-4 gap-2 rounded-lg bg-slate-50 p-3 text-center">
@@ -238,15 +358,6 @@ const PropertyOwners = () => {
                                                     <p className="text-sm font-semibold text-slate-900">{owner.pending_properties ?? 0}</p>
                                                     <p className="mt-0.5 text-[10px] leading-tight text-slate-500">Pending</p>
                                                 </div>
-                                            </div>
-
-                                            <div className="mt-4 flex items-center gap-5 border-t border-slate-100 pt-3 text-xs">
-                                                <Link to={`/admin/property-owners/${ownerId}`} className="font-medium text-blue-600 hover:text-blue-700">
-                                                    View
-                                                </Link>
-                                                <button type="button" className="font-medium text-rose-600 hover:text-rose-700">
-                                                    {status === "Suspended" ? "Reinstate" : "Suspend"}
-                                                </button>
                                             </div>
                                         </div>
                                     );
@@ -278,6 +389,52 @@ const PropertyOwners = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Suspend */}
+            <ConfirmModal
+                open={action === "suspend" && !!selectedOwner}
+                onClose={closeAction}
+                onConfirm={handleAction}
+                tone="danger"
+                icon={<Ban size={26} />}
+                title="Suspend Account"
+                description={
+                    <>
+                        Suspending{" "}
+                        <span className="font-medium text-slate-800">{selectedName}</span>
+                        ’s account will block them from signing in.
+                    </>
+                }
+                reasonLabel="Reason for suspension"
+                reasonPlaceholder="e.g. Multiple complaints received, pending investigation…"
+                confirmLabel="Suspend Account"
+                loadingLabel="Suspending…"
+                loading={suspendMutation.isPending}
+                error={actionError}
+            />
+
+            {/* Reactivate */}
+            <ConfirmModal
+                open={action === "reactivate" && !!selectedOwner}
+                onClose={closeAction}
+                onConfirm={handleAction}
+                tone="success"
+                icon={<RotateCcw size={26} />}
+                title="Reactivate Account"
+                description={
+                    <>
+                        Reactivating{" "}
+                        <span className="font-medium text-slate-800">{selectedName}</span>
+                        ’s account will restore their access.
+                    </>
+                }
+                reasonLabel="Reason for reactivating"
+                reasonPlaceholder="e.g. Investigation completed, no further issues found…"
+                confirmLabel="Reactivate Account"
+                loadingLabel="Reactivating…"
+                loading={reactivateMutation.isPending}
+                error={actionError}
+            />
         </>
     );
 };

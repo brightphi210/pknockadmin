@@ -1,7 +1,17 @@
-import { Ban, CheckCircle2, Eye, EyeOff, Info, Plus, RotateCcw, Search } from "lucide-react"
-import { useMemo, useState } from "react"
+import {
+    Ban,
+    CheckCircle2,
+    Eye,
+    EyeOff,
+    Info,
+    Plus,
+    RotateCcw,
+    Search
+} from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import LoadingOverlay from "../../components/LoadingOverlay"
+import ActionsMenu from "../../components/UI/ActionMenu"
 import ConfirmModal from "../../components/UI/ConfirmModal"
 import FormField, { fieldInputClass } from "../../components/UI/FormField"
 import Modal from "../../components/UI/Modal"
@@ -9,8 +19,7 @@ import { useToast } from "../../components/UI/Toast"
 import {
     useCreateStaff,
     useReactivateUser,
-    useSuspendUser,
-    type CreateStaffPayload,
+    useSuspendUser
 } from "../../hooks/mutations/allMutation"
 import { parseApiError } from "../../hooks/parseapierror"
 import { useGetStaff } from "../../hooks/queries/allQueries"
@@ -37,16 +46,19 @@ const emptyForm = {
     phone: "",
     password: "",
     gender: "",
-    state_of_origin: "",
-    nationality: "Nigeria",
-    coverage_area: "",
     date_of_birth: "",
+    state_of_origin: "",
+    nationality: "Nigerian",
+    coverage_area: "",
 }
 type FormState = typeof emptyForm
 type FormErrors = Partial<Record<keyof FormState, string>>
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_RE = /^\+?[0-9\s-]{7,16}$/
+
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
 const fieldLabels: Record<string, string> = {
     first_name: "First name",
@@ -55,13 +67,13 @@ const fieldLabels: Record<string, string> = {
     phone: "Phone",
     password: "Password",
     gender: "Gender",
+    date_of_birth: "Date of birth",
     state_of_origin: "State of origin",
     nationality: "Nationality",
     coverage_area: "Coverage area",
-    date_of_birth: "Date of birth",
+    profile_image: "Profile image",
 }
 
-/** Client-side validation: returns an error map (empty = valid). */
 const validate = (f: FormState): FormErrors => {
     const e: FormErrors = {}
     if (!f.first_name.trim()) e.first_name = "First name is required."
@@ -72,6 +84,7 @@ const validate = (f: FormState): FormErrors => {
     else if (!PHONE_RE.test(f.phone.trim())) e.phone = "Enter a valid phone number."
     if (!f.password.trim()) e.password = "Password is required."
     else if (f.password.trim().length < 8) e.password = "Password must be at least 8 characters."
+    if (!f.gender) e.gender = "Select a gender."
     if (!f.coverage_area) e.coverage_area = "Select a coverage area."
     return e
 }
@@ -92,57 +105,20 @@ const StatusBadge = ({ status }: { status: string }) => {
 const EmptyState = ({
     title,
     description,
-    onAction,
 }: {
     title: string
     description: string
     onAction?: () => void
 }) => (
-    <div className="flex min-h-[260px] items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
+    <div className="flex min-h-80 items-center justify-center p-6">
+        <div className="w-full max-w-md bg-white px-6 py-10 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-lg font-semibold text-slate-700">
                 !
             </div>
             <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
             <p className="mt-2 text-sm text-slate-500">{description}</p>
-            {onAction && (
-                <button
-                    type="button"
-                    onClick={onAction}
-                    className="mt-5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-                >
-                    Refresh
-                </button>
-            )}
         </div>
     </div>
-)
-
-const RowActions = ({
-    officer,
-    onView,
-    onSuspend,
-    onReactivate,
-}: {
-    officer: OfficerRow
-    onView: () => void
-    onSuspend: () => void
-    onReactivate: () => void
-}) => (
-    <>
-        <button onClick={onView} className="font-medium text-blue-600 hover:text-blue-700">
-            View
-        </button>
-        {officer.status === "Active" ? (
-            <button onClick={onSuspend} className="font-medium text-red-600 hover:text-red-700">
-                Suspend
-            </button>
-        ) : (
-            <button onClick={onReactivate} className="font-medium text-green-600 hover:text-green-700">
-                Reactivate
-            </button>
-        )}
-    </>
 )
 
 /* ---------- Page ---------- */
@@ -153,6 +129,7 @@ const VerificationOfficers = () => {
 
     const [page, setPage] = useState(1)
     const [search, setSearch] = useState("")
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -165,12 +142,17 @@ const VerificationOfficers = () => {
     const [fieldErrors, setFieldErrors] = useState<FormErrors>({})
     const [formError, setFormError] = useState("")
 
+    const [profileImage, setProfileImage] = useState<File | null>(null)
+    const [imagePreview, setImagePreview] = useState<string | null>(null)
+    const [imageError, setImageError] = useState("")
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
     const { staff, isLoading, isError, refetch } = useGetStaff(page)
     const createMutation = useCreateStaff()
     const suspendMutation = useSuspendUser()
     const reactivateMutation = useReactivateUser()
 
-    console.log("staff", staff)
+    console.log("staff response", staff?.data)
 
     const data = (staff?.data ?? staff) as
         | { count?: number; previous?: string | null; next?: string | null; results?: any[] }
@@ -190,7 +172,7 @@ const VerificationOfficers = () => {
             displayId: s.display_id || "--",
             name: `${s.first_name ?? ""} ${s.last_name ?? ""}`.trim(),
             coverage: s.coverage_area || "--",
-            status: s.active === false ? "Suspended" : "Active",
+            status: s.account_status === "suspended" ? "Suspended" : "Active",
             assigned: s.assigned_count ?? 0,
             completed: s.completed_count ?? 0,
             pending: s.pending_count ?? 0,
@@ -216,13 +198,53 @@ const VerificationOfficers = () => {
     const activeCount = officers.filter((o) => o.status === "Active").length
     const suspendedCount = officers.length - activeCount
 
+    /* ----- image preview lifecycle ----- */
+
+    useEffect(() => {
+        if (!profileImage) {
+            setImagePreview(null)
+            return
+        }
+        const url = URL.createObjectURL(profileImage)
+        setImagePreview(url)
+        return () => URL.revokeObjectURL(url)
+    }, [profileImage])
+
     /* ----- create ----- */
 
     const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
         setForm((f) => ({ ...f, [key]: value }))
-        // clear the error for a field as soon as the user edits it
         setFieldErrors((e) => (e[key] ? { ...e, [key]: undefined } : e))
         setFormError("")
+    }
+
+    const clearImage = () => {
+        setProfileImage(null)
+        setImageError("")
+        if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        setFormError("")
+        if (!file) {
+            clearImage()
+            return
+        }
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+            setImageError("Use a JPG, PNG or WEBP image.")
+            setProfileImage(null)
+            e.target.value = ""
+            return
+        }
+        if (file.size > MAX_IMAGE_BYTES) {
+            setImageError("Image must be 2MB or smaller.")
+            setProfileImage(null)
+            e.target.value = ""
+            return
+        }
+        setImageError("")
+        setProfileImage(file)
     }
 
     const closeCreate = () => {
@@ -231,59 +253,61 @@ const VerificationOfficers = () => {
         setShowPassword(false)
         setFieldErrors({})
         setFormError("")
+        setImageError("")
     }
 
     const handleCreate = async () => {
         setFormError("")
         const errors = validate(form)
         setFieldErrors(errors)
-        if (Object.keys(errors).length) {
+        if (Object.keys(errors).length || imageError) {
             setFormError("Please fix the highlighted fields.")
             return
         }
 
-        const body: CreateStaffPayload = {
+        const body: any = {
             user: {
                 email: form.email.trim(),
+                phone: form.phone.trim(),
                 first_name: form.first_name.trim(),
                 last_name: form.last_name.trim(),
-                phone: form.phone.trim(),
                 password: form.password.trim(),
-                gender: form.gender || "prefer_not_to_say",
+                gender: form.gender as "M" | "F",
                 date_of_birth: form.date_of_birth || null,
-                state_of_origin: form.state_of_origin || "Lagos",
-                nationality: form.nationality || "Nigeria",
-                staff_role: "pvo",
-                active: true,
-                coverage_area: form.coverage_area,
+                state_of_origin: form.state_of_origin || "Lagos State",
+                nationality: form.nationality || "Nigerian",
             },
             staff_role: "pvo",
+            coverage_area: form.coverage_area,
+            availability: true,
             active: true,
         }
 
         try {
             await createMutation.mutateAsync(body)
             setShowCreateModal(false)
-            setForm(emptyForm)
-            setFieldErrors({})
-            setShowSuccessModal(true)
             toast.success("Officer created", {
                 message: `${form.first_name.trim()} ${form.last_name.trim()} was added.`,
             })
+            setForm(emptyForm)
+            setFieldErrors({})
+            clearImage()
+            setShowSuccessModal(true)
             refetch()
         } catch (err) {
             const parsed = parseApiError(err, "Failed to create officer.")
 
-            // Map backend field errors onto matching inputs
             const mapped: FormErrors = {}
             const leftovers: string[] = []
-            for (const [key, msg] of Object.entries(parsed.fieldErrors)) {
-                if (key in emptyForm) mapped[key as keyof FormState] = msg
+            for (const [rawKey, msg] of Object.entries(parsed.fieldErrors)) {
+                // Server may nest errors under "user" (e.g. "user.email")
+                const key = rawKey.replace(/^user[._]/, "")
+                if (key === "profile_image") setImageError(msg)
+                else if (key in emptyForm) mapped[key as keyof FormState] = msg
                 else leftovers.push(`${fieldLabels[key] ?? key.replace(/_/g, " ")}: ${msg}`)
             }
             setFieldErrors(mapped)
 
-            // Unknown fields (e.g. "user") + general messages go to the banner
             const banner = leftovers.length
                 ? leftovers.join("\n")
                 : Object.keys(mapped).length
@@ -309,9 +333,14 @@ const VerificationOfficers = () => {
 
     const handleAction = async (reason: string) => {
         if (!selectedOfficer || !action || !reason) return
+
+        // Prefer user_id (accounts/users/:id), fall back to id
+        const id = selectedOfficer.user_id || selectedOfficer.id
+        if (!id || id === "--") return
+
         const mutation = action === "suspend" ? suspendMutation : reactivateMutation
         try {
-            await mutation.mutateAsync({ id: selectedOfficer.id, reason })
+            await mutation.mutateAsync({ id, reason })
             toast.success(action === "suspend" ? "Account suspended" : "Account reactivated", {
                 message: selectedOfficer.name,
             })
@@ -344,9 +373,12 @@ const VerificationOfficers = () => {
             <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
                 <div className="mb-5 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl">Verification Officers</h1>
+                        <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl">
+                            Verification Officers
+                        </h1>
                         <p className="mt-1 text-sm text-gray-500">
-                            {totalCount} officers total · {activeCount} active · {suspendedCount} suspended (this page)
+                            {totalCount} officers total · {activeCount} active · {suspendedCount}{" "}
+                            suspended (this page)
                         </p>
                     </div>
                     <button
@@ -361,7 +393,10 @@ const VerificationOfficers = () => {
                 <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
                     <div className="border-b border-gray-100 p-4">
                         <div className="relative w-full md:max-w-md">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <Search
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                size={18}
+                            />
                             <input
                                 type="text"
                                 placeholder="Search by name, ID or area"
@@ -384,7 +419,6 @@ const VerificationOfficers = () => {
                                     <th className="px-6 py-3 text-center">Assigned</th>
                                     <th className="px-6 py-3 text-center">Completed</th>
                                     <th className="px-6 py-3 text-center">Pending</th>
-                                    <th className="px-6 py-3">Last Active</th>
                                     <th className="px-6 py-3">Action</th>
                                 </tr>
                             </thead>
@@ -404,28 +438,55 @@ const VerificationOfficers = () => {
                                     </tr>
                                 ) : (
                                     filtered.map((officer) => (
-                                        <tr key={officer.user_id} className="transition-colors hover:bg-gray-50">
+                                        <tr
+                                            key={officer.user_id}
+                                            className="transition-colors hover:bg-gray-50"
+                                        >
                                             <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
                                                 {officer.name}
                                             </td>
-                                            <td className="whitespace-nowrap px-6 py-4 text-gray-600">{officer.displayId}</td>
-                                            <td className="px-6 py-4 text-gray-600">{officer.coverage}</td>
+                                            <td className="whitespace-nowrap px-6 py-4 text-gray-600">
+                                                {officer.displayId}
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-600">
+                                                {officer.coverage}
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <StatusBadge status={officer.status} />
                                             </td>
-                                            <td className="px-6 py-4 text-center text-gray-700">{officer.assigned}</td>
-                                            <td className="px-6 py-4 text-center text-gray-700">{officer.completed}</td>
-                                            <td className="px-6 py-4 text-center text-gray-700">{officer.pending}</td>
-                                            <td className="whitespace-nowrap px-6 py-4 text-gray-500">{officer.lastActive}</td>
+                                            <td className="px-6 py-4 text-center text-gray-700">
+                                                {officer.assigned}
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-gray-700">
+                                                {officer.completed}
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-gray-700">
+                                                {officer.pending}
+                                            </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3 whitespace-nowrap">
-                                                    <RowActions
-                                                        officer={officer}
-                                                        onView={() => navigate(`/admin/verification-officers/${officer.user_id}`)}
-                                                        onSuspend={() => openAction(officer, "suspend")}
-                                                        onReactivate={() => openAction(officer, "reactivate")}
-                                                    />
-                                                </div>
+                                                <ActionsMenu
+                                                    open={openMenuId === officer.user_id}
+                                                    onToggle={() =>
+                                                        setOpenMenuId((prev) =>
+                                                            prev === officer.user_id
+                                                                ? null
+                                                                : officer.user_id
+                                                        )
+                                                    }
+                                                    onClose={() => setOpenMenuId(null)}
+                                                    onView={() =>
+                                                        navigate(
+                                                            `/admin/verification-officers/${officer.user_id}`
+                                                        )
+                                                    }
+                                                    onSuspend={() =>
+                                                        openAction(officer, "suspend")
+                                                    }
+                                                    onReactivate={() =>
+                                                        openAction(officer, "reactivate")
+                                                    }
+                                                    isActive={officer.status === "Active"}
+                                                />
                                             </td>
                                         </tr>
                                     ))
@@ -445,13 +506,41 @@ const VerificationOfficers = () => {
                             </div>
                         ) : (
                             filtered.map((officer) => (
-                                <div key={officer.id} className="rounded-xl border border-gray-200 p-4">
+                                <div
+                                    key={officer.id}
+                                    className="rounded-xl border border-gray-200 p-4"
+                                >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
-                                            <p className="truncate font-medium text-gray-900">{officer.name}</p>
-                                            <p className="mt-0.5 text-xs text-gray-500">{officer.displayId}</p>
+                                            <p className="truncate font-medium text-gray-900">
+                                                {officer.name}
+                                            </p>
+                                            <p className="mt-0.5 text-xs text-gray-500">
+                                                {officer.displayId}
+                                            </p>
                                         </div>
-                                        <StatusBadge status={officer.status} />
+                                        <div className="flex items-center gap-2">
+                                            <StatusBadge status={officer.status} />
+                                            <ActionsMenu
+                                                open={openMenuId === officer.id}
+                                                onToggle={() =>
+                                                    setOpenMenuId((prev) =>
+                                                        prev === officer.id ? null : officer.id
+                                                    )
+                                                }
+                                                onClose={() => setOpenMenuId(null)}
+                                                onView={() =>
+                                                    navigate(
+                                                        `/admin/verification-officers/${officer.id}`
+                                                    )
+                                                }
+                                                onSuspend={() => openAction(officer, "suspend")}
+                                                onReactivate={() =>
+                                                    openAction(officer, "reactivate")
+                                                }
+                                                isActive={officer.status === "Active"}
+                                            />
+                                        </div>
                                     </div>
                                     <p className="mt-2 text-sm text-gray-600">{officer.coverage}</p>
                                     <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-gray-50 p-3 text-center">
@@ -460,22 +549,15 @@ const VerificationOfficers = () => {
                                             ["Completed", officer.completed],
                                             ["Pending", officer.pending],
                                         ].map(([label, value]) => (
-                                            <div key={label}>
-                                                <p className="text-sm font-semibold text-gray-900">{value}</p>
-                                                <p className="mt-0.5 text-xs text-gray-500">{label}</p>
+                                            <div key={label as string}>
+                                                <p className="text-sm font-semibold text-gray-900">
+                                                    {value}
+                                                </p>
+                                                <p className="mt-0.5 text-xs text-gray-500">
+                                                    {label}
+                                                </p>
                                             </div>
                                         ))}
-                                    </div>
-                                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-3 text-sm">
-                                        <div className="flex items-center gap-5">
-                                            <RowActions
-                                                officer={officer}
-                                                onView={() => navigate(`/admin/verification-officers/${officer.id}`)}
-                                                onSuspend={() => openAction(officer, "suspend")}
-                                                onReactivate={() => openAction(officer, "reactivate")}
-                                            />
-                                        </div>
-                                        <span className="text-xs text-gray-400">{officer.lastActive}</span>
                                     </div>
                                 </div>
                             ))
@@ -538,10 +620,47 @@ const VerificationOfficers = () => {
                 }
             >
                 <div className="space-y-4">
-                    <div className="flex justify-center pt-1">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-slate-800 to-slate-950 text-xl font-semibold uppercase text-white shadow-md ring-4 ring-slate-100">
-                            {(form.first_name[0] || "P") + (form.last_name[0] || "V")}
+                    {/* Avatar / profile image */}
+                    <div className="flex flex-col items-center gap-2 pt-1">
+                        {imagePreview ? (
+                            <img
+                                src={imagePreview}
+                                alt="Profile preview"
+                                className="h-16 w-16 rounded-full object-cover shadow-md ring-4 ring-slate-100"
+                            />
+                        ) : (
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-slate-800 to-slate-950 text-xl font-semibold uppercase text-white shadow-md ring-4 ring-slate-100">
+                                {(form.first_name[0] || "P") + (form.last_name[0] || "V")}
+                            </div>
+                        )}
+                        <div className="flex items-center gap-3 text-sm">
+                            <label className="cursor-pointer font-medium text-blue-600 hover:text-blue-700">
+                                {profileImage ? "Change photo" : "Upload photo (optional)"}
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    onChange={handleImageChange}
+                                    disabled={creating}
+                                    className="hidden"
+                                />
+                            </label>
+                            {profileImage && (
+                                <button
+                                    type="button"
+                                    onClick={clearImage}
+                                    disabled={creating}
+                                    className="font-medium text-slate-500 hover:text-slate-700"
+                                >
+                                    Remove
+                                </button>
+                            )}
                         </div>
+                        {imageError ? (
+                            <p className="text-xs text-red-600">{imageError}</p>
+                        ) : (
+                            <p className="text-xs text-slate-400">JPG, PNG or WEBP, up to 2MB</p>
+                        )}
                     </div>
 
                     {formError && (
@@ -623,18 +742,25 @@ const VerificationOfficers = () => {
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <FormField label="Gender" error={fieldErrors.gender}>
+                        <FormField label="Gender" required error={fieldErrors.gender}>
                             <select
                                 value={form.gender}
                                 onChange={(e) => setField("gender", e.target.value)}
                                 className={fieldInputClass(!!fieldErrors.gender)}
                             >
                                 <option value="">Select</option>
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
                             </select>
                         </FormField>
-                        <div></div>
+                        <FormField label="Date of Birth" error={fieldErrors.date_of_birth}>
+                            <input
+                                type="date"
+                                value={form.date_of_birth}
+                                onChange={(e) => setField("date_of_birth", e.target.value)}
+                                className={fieldInputClass(!!fieldErrors.date_of_birth)}
+                            />
+                        </FormField>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -645,10 +771,10 @@ const VerificationOfficers = () => {
                                 className={fieldInputClass(!!fieldErrors.state_of_origin)}
                             >
                                 <option value="">Select</option>
-                                <option value="Lagos">Lagos</option>
+                                <option value="Lagos State">Lagos State</option>
                                 <option value="Abuja">Abuja</option>
-                                <option value="Rivers">Rivers</option>
-                                <option value="Ogun">Ogun</option>
+                                <option value="Rivers State">Rivers State</option>
+                                <option value="Ogun State">Ogun State</option>
                             </select>
                         </FormField>
                         <FormField label="Nationality" error={fieldErrors.nationality}>
@@ -657,7 +783,7 @@ const VerificationOfficers = () => {
                                 onChange={(e) => setField("nationality", e.target.value)}
                                 className={fieldInputClass(!!fieldErrors.nationality)}
                             >
-                                <option value="Nigeria">Nigeria</option>
+                                <option value="Nigerian">Nigerian</option>
                             </select>
                         </FormField>
                     </div>
@@ -669,12 +795,16 @@ const VerificationOfficers = () => {
                             className={fieldInputClass(!!fieldErrors.coverage_area)}
                         >
                             <option value="">Select</option>
-                            <option value="Lagos Island, Victoria Island">Lagos Island, Victoria Island</option>
-                            <option value="Ikeja, Allen Avenue">Ikeja, Allen Avenue</option>
-                            <option value="Surulere, Ojuelegba">Surulere, Ojuelegba</option>
-                            <option value="Ajah, Lekki">Ajah, Lekki</option>
-                            <option value="Yaba, Tech Hub">Yaba, Tech Hub</option>
-                            <option value="Festac Town, Amuwo-Odofin">Festac Town, Amuwo-Odofin</option>
+                            <option value="Lekki / Eti-Osa">Lekki / Eti-Osa</option>
+                            <option value="Lagos Island / Victoria Island">
+                                Lagos Island / Victoria Island
+                            </option>
+                            <option value="Ikeja / Allen Avenue">Ikeja / Allen Avenue</option>
+                            <option value="Surulere / Ojuelegba">Surulere / Ojuelegba</option>
+                            <option value="Yaba / Tech Hub">Yaba / Tech Hub</option>
+                            <option value="Festac Town / Amuwo-Odofin">
+                                Festac Town / Amuwo-Odofin
+                            </option>
                         </select>
                     </FormField>
                 </div>
@@ -709,8 +839,8 @@ const VerificationOfficers = () => {
                     <div>
                         <p className="text-sm font-medium text-amber-800">Security notice</p>
                         <p className="mt-0.5 text-sm text-amber-700">
-                            The temporary password has been sent to the officer’s email. For security reasons, it is not
-                            displayed here.
+                            The temporary password has been sent to the officer’s email. For
+                            security reasons, it is not displayed here.
                         </p>
                     </div>
                 </div>
@@ -726,8 +856,12 @@ const VerificationOfficers = () => {
                 title="Suspend Account"
                 description={
                     <>
-                        Suspending <span className="font-medium text-slate-800">{selectedOfficer?.name}</span>’s account
-                        will block them from signing in and receiving new verification assignments.
+                        Suspending{" "}
+                        <span className="font-medium text-slate-800">
+                            {selectedOfficer?.name}
+                        </span>
+                        ’s account will block them from signing in and receiving new verification
+                        assignments.
                     </>
                 }
                 reasonLabel="Reason for suspension"
@@ -748,8 +882,12 @@ const VerificationOfficers = () => {
                 title="Reactivate Account"
                 description={
                     <>
-                        Reactivating <span className="font-medium text-slate-800">{selectedOfficer?.name}</span>’s account
-                        will restore their access and let them receive new verification assignments.
+                        Reactivating{" "}
+                        <span className="font-medium text-slate-800">
+                            {selectedOfficer?.name}
+                        </span>
+                        ’s account will restore their access and let them receive new verification
+                        assignments.
                     </>
                 }
                 reasonLabel="Reason for reactivating"

@@ -116,3 +116,39 @@ export const useReactivateUser = () => {
     },
   })
 }
+
+export const useReplyComplaint = () => {
+  return useMutation({
+    mutationFn: async ({ id, message }: { id: string; message: string }) => {
+      const token = (await localStorage.getItem("pknockAdminToken")) || "";
+      return post_requests(`support/complaints/${id}/reply/`, { message }, token);
+    },
+  });
+};
+
+
+export const useMarkNotificationRead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const token = (await localStorage.getItem("pknockAdminToken")) || "";
+      return post_requests(`notifications/${id}/read/`, {}, token);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+};
+
+export const useMarkAllNotificationsRead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const token = (await localStorage.getItem("pknockAdminToken")) || "";
+      return post_requests(`notifications/read-all/`, {}, token);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+};

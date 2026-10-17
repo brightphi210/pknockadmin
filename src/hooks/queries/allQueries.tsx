@@ -270,3 +270,109 @@ export const useGetStaff = (page = 1) => {
         refetch,
     }
 }
+
+
+// ==================== PROPERTIES ===========================
+
+export const useGetProperties = (page = 1) => {
+    const { data, isLoading, isError, isFetched, refetch } = useQuery({
+        queryKey: ["properties", page],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || "";
+            return get_requests(`properties/properties/?page=${page}`, token);
+        },
+    });
+
+    return {
+        properties: data,
+        isLoading,
+        isError,
+        isFetched,
+        refetch,
+    };
+};
+
+export type PropertyRecord = {
+    id?: string;
+    owner_profile?: string | { id?: string; first_name?: string; last_name?: string; email?: string };
+    owner_profile_id?: string;
+    assigned_pvo?: string | { id?: string; first_name?: string; last_name?: string };
+    assigned_pvo_id?: string;
+    title?: string;
+    description?: string;
+    price?: string | number;
+    listing_type?: string;
+    property_type?: string;
+    status?: string;
+    occupancy_status?: string;
+    state?: string;
+    city?: string;
+    lga?: string;
+    neighbourhood?: string;
+    street_address?: string;
+    bedrooms?: number;
+    bathrooms?: number;
+    published_at?: string;
+    created_at?: string;
+    updated_at?: string;
+    owner_name?: string;
+    tenant_name?: string;
+    pvo_name?: string;
+    // …other fields from your schema as needed
+};
+
+
+export const useGetInspections = (page = 1) => {
+    const { data, isLoading, isError, isFetched, refetch } = useQuery({
+        queryKey: ["inspections", page],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || "";
+            return get_requests(`verification/inspections/?page=${page}`, token);
+        },
+    });
+
+    return {
+        inspections: data,
+        isLoading,
+        isError,
+        isFetched,
+        refetch,
+    };
+};
+
+
+export const useGetComplaints = (page = 1) => {
+    const { data, isLoading, isError, isFetched, refetch } = useQuery({
+        queryKey: ["complaints", page],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || "";
+            return get_requests(`complaints/complaints/?page=${page}`, token);
+        },
+    });
+    return {
+        complaints: data,
+        isLoading,
+        isError,
+        isFetched,
+        refetch,
+    };
+};
+
+
+export const useGetNotifications = (page = 1) => {
+    const { data, isLoading, isError, isFetched, refetch } = useQuery({
+        queryKey: ["notifications", page],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || "";
+            return get_requests(`notifications/?page=${page}`, token);
+        },
+    });
+
+    return {
+        notifications: data,
+        isLoading,
+        isError,
+        isFetched,
+        refetch,
+    };
+};
