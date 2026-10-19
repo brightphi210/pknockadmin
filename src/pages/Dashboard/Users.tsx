@@ -67,7 +67,7 @@ const KycBadge = ({ status }: { status?: string }) => {
 
     return (
         <span
-            className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[value] || "bg-gray-100 text-gray-600"
+            className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${styles[value] || "bg-gray-100 text-gray-600"
                 }`}
         >
             {value}
@@ -77,7 +77,7 @@ const KycBadge = ({ status }: { status?: string }) => {
 
 const StatusBadge = ({ active }: { active: boolean }) => (
     <span
-        className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${active ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+        className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${active ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
             }`}
     >
         <span
@@ -106,7 +106,6 @@ const EmptyState = ({
     </div>
 );
 
-
 const Users = () => {
     const navigate = useNavigate();
     const toast = useToast();
@@ -121,7 +120,6 @@ const Users = () => {
     const { users: response, isLoading, isError, refetch } = useGetUsers(page);
     const suspendMutation = useSuspendUser();
     const reactivateMutation = useReactivateUser();
-    console.log("users response", response?.data);
 
     const users = useMemo(() => {
         const payload = response?.data ?? response;
@@ -224,30 +222,28 @@ const Users = () => {
     return (
         <>
             <LoadingOverlay visible={isLoading} />
-            <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
-                <div className="mb-5 sm:mb-6">
-                    <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl">Users</h1>
-                    <p className="mt-1 text-sm text-gray-500">
+            <div className="space-y-4 p-4 sm:p-6 lg:p-8">
+                <div>
+                    <h1 className="text-xl font-extrabold text-slate-900 sm:text-2xl">Users</h1>
+                    <p className="mt-1 text-xs text-slate-500">
                         {totalUsers} registered user{totalUsers === 1 ? "" : "s"}
                         {suspendedCount > 0 && <> · {suspendedCount} suspended (this page)</>}
                     </p>
                 </div>
 
-                <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-                    <div className="border-b border-gray-100 p-4">
-                        <div className="relative w-full md:max-w-md">
-                            <Search
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                                size={18}
-                            />
-                            <input
-                                type="text"
-                                placeholder="Search"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
+                <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+                    <div className="relative w-full sm:max-w-xs">
+                        <Search
+                            size={16}
+                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none"
+                        />
                     </div>
 
                     {!filteredUsers.length ? (
@@ -262,22 +258,22 @@ const Users = () => {
                     ) : (
                         <>
                             {/* Desktop table */}
-                            <div className="hidden overflow-x-auto lg:block">
-                                <table className="w-full text-sm">
+                            <div className="mt-5 hidden overflow-x-auto lg:block">
+                                <table className="w-full min-w-225 border-collapse">
                                     <thead>
-                                        <tr className="whitespace-nowrap bg-gray-50 text-left font-medium text-gray-500">
-                                            <th className="px-6 py-3">User ID</th>
-                                            <th className="px-6 py-3">Name</th>
-                                            <th className="px-6 py-3">Email</th>
-                                            <th className="px-6 py-3">Phone Number</th>
-                                            <th className="px-6 py-3">Registered</th>
-                                            <th className="px-6 py-3 text-center">Inspections</th>
-                                            <th className="px-6 py-3">KYC Status</th>
-                                            <th className="px-6 py-3">Status</th>
-                                            <th className="px-6 py-3">Action</th>
+                                        <tr className="whitespace-nowrap border-b border-slate-100 text-left text-xs font-medium text-slate-500">
+                                            <th className="pb-3 pr-4 font-medium">User ID</th>
+                                            <th className="pb-3 pr-4 font-medium">Name</th>
+                                            <th className="pb-3 pr-4 font-medium">Email</th>
+                                            <th className="pb-3 pr-4 font-medium">Phone Number</th>
+                                            <th className="pb-3 pr-4 font-medium">Registered</th>
+                                            <th className="pb-3 pr-4 text-center font-medium">Inspections</th>
+                                            <th className="pb-3 pr-4 font-medium">KYC Status</th>
+                                            <th className="pb-3 pr-4 font-medium">Status</th>
+                                            <th className="pb-3 font-medium">Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-100">
+                                    <tbody className="divide-y divide-slate-100">
                                         {filteredUsers.map((user) => {
                                             const userKey = getUserKey(user);
                                             const menuId = `table-${userKey}`;
@@ -287,34 +283,34 @@ const Users = () => {
                                             return (
                                                 <tr
                                                     key={userKey || fullName}
-                                                    className={`transition-colors hover:bg-gray-50 ${active ? "" : "bg-gray-50/60"
+                                                    className={`text-xs transition-colors hover:bg-slate-50 ${active ? "" : "bg-slate-50/60"
                                                         }`}
                                                 >
-                                                    <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
+                                                    <td className="whitespace-nowrap py-4 pr-4 text-slate-600">
                                                         {user?.display_id || "—"}
                                                     </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
+                                                    <td className="whitespace-nowrap py-4 pr-4 text-sm font-semibold text-slate-900">
                                                         {fullName}
                                                     </td>
-                                                    <td className="px-6 py-4 text-gray-600">
+                                                    <td className="py-4 pr-4 text-slate-600">
                                                         {user?.email || "—"}
                                                     </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-gray-600">
+                                                    <td className="whitespace-nowrap py-4 pr-4 text-slate-600">
                                                         {user?.phone || "—"}
                                                     </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-gray-600">
+                                                    <td className="whitespace-nowrap py-4 pr-4 text-slate-500">
                                                         {formatDate(user?.registered_at)}
                                                     </td>
-                                                    <td className="px-6 py-4 text-center text-gray-700">
+                                                    <td className="py-4 pr-4 text-center text-slate-700">
                                                         {user?.inspection_count ?? 0}
                                                     </td>
-                                                    <td className="px-6 py-4">
+                                                    <td className="py-4 pr-4">
                                                         <KycBadge status={user?.kyc_status} />
                                                     </td>
-                                                    <td className="px-6 py-4">
+                                                    <td className="py-4 pr-4">
                                                         <StatusBadge active={active} />
                                                     </td>
-                                                    <td className="px-6 py-4">
+                                                    <td className="py-4">
                                                         <ActionsMenu
                                                             open={openMenuId === menuId}
                                                             onToggle={() =>
@@ -343,7 +339,7 @@ const Users = () => {
                             </div>
 
                             {/* Mobile cards */}
-                            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:hidden">
+                            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
                                 {filteredUsers.map((user) => {
                                     const userKey = getUserKey(user);
                                     const menuId = `card-${userKey}`;
@@ -353,15 +349,15 @@ const Users = () => {
                                     return (
                                         <div
                                             key={userKey || fullName}
-                                            className={`rounded-xl border border-gray-200 p-4 ${active ? "" : "bg-gray-50/60"
+                                            className={`rounded-xl border border-slate-200 p-4 ${active ? "" : "bg-slate-50/60"
                                                 }`}
                                         >
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0">
-                                                    <p className="truncate text-sm font-semibold text-gray-900">
+                                                    <p className="truncate text-sm font-semibold text-slate-900">
                                                         {fullName}
                                                     </p>
-                                                    <p className="mt-1 text-xs text-gray-500">
+                                                    <p className="mt-1 break-all text-xs text-slate-500">
                                                         {user?.email || "No email"}
                                                     </p>
                                                 </div>
@@ -385,27 +381,27 @@ const Users = () => {
                                                 <StatusBadge active={active} />
                                             </div>
 
-                                            <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-gray-600">
+                                            <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-600">
                                                 <div>
-                                                    <p className="text-[10px] uppercase tracking-wide text-gray-400">
+                                                    <p className="text-[10px] uppercase tracking-wide text-slate-400">
                                                         User ID
                                                     </p>
-                                                    <p className="mt-1 font-medium text-gray-800">
+                                                    <p className="mt-1 font-medium text-slate-800">
                                                         {user?.display_id ?? (userKey || "—")}
                                                     </p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] uppercase tracking-wide text-gray-400">
+                                                    <p className="text-[10px] uppercase tracking-wide text-slate-400">
                                                         Registered
                                                     </p>
-                                                    <p className="mt-1 font-medium text-gray-800">
+                                                    <p className="mt-1 font-medium text-slate-800">
                                                         {formatDate(user?.registered_at)}
                                                     </p>
                                                 </div>
                                             </div>
 
-                                            <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-3 text-sm">
-                                                <span className="text-gray-500">
+                                            <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs">
+                                                <span className="text-slate-500">
                                                     {user?.inspection_count ?? 0} inspections
                                                 </span>
                                             </div>
@@ -416,8 +412,9 @@ const Users = () => {
                         </>
                     )}
 
-                    <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-4">
-                        <p className="text-sm text-gray-500">
+                    {/* Pagination */}
+                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                        <p className="text-xs text-slate-500">
                             Page {page} of {totalPages}
                         </p>
                         <div className="flex items-center gap-2">
@@ -425,7 +422,7 @@ const Users = () => {
                                 type="button"
                                 onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                                 disabled={!hasPreviousPage || page === 1}
-                                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 Previous
                             </button>
@@ -433,7 +430,7 @@ const Users = () => {
                                 type="button"
                                 onClick={() => setPage((prev) => prev + 1)}
                                 disabled={!hasNextPage}
-                                className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+                                className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
                                 Next
                             </button>

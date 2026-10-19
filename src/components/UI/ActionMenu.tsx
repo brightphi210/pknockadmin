@@ -2,35 +2,69 @@ import { MoreVertical } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-const MENU_WIDTH = 160;
-const MENU_HEIGHT = 90; // approx height of 2 items + padding
+export type ActionMenuItem = {
+    label: string;
+    onClick: () => void;
+    tone?: "default" | "primary" | "danger" | "success";
+    disabled?: boolean;
+};
+
+const MENU_WIDTH = 176;
+const ITEM_HEIGHT = 38;
+const MENU_PADDING = 10;
 const GAP = 4;
 const EDGE = 8;
+
+const TONE_CLASS: Record<NonNullable<ActionMenuItem["tone"]>, string> = {
+    default: "text-gray-700 hover:bg-gray-50",
+    primary: "text-blue-600 hover:bg-blue-50",
+    danger: "text-red-600 hover:bg-red-50",
+    success: "text-green-600 hover:bg-green-50",
+};
 
 type Props = {
     open: boolean;
     onToggle: () => void;
     onClose: () => void;
-    onView: () => void;
-    onSuspend: () => void;
-    onReactivate: () => void;
-    isActive: boolean;
+    /** Custom menu entries. When provided, the legacy props below are ignored. */
+    items?: ActionMenuItem[];
+    /* Legacy props: View + Suspend/Reactivate */
+    onView?: () => void;
+    onSuspend?: () => void;
+    onReactivate?: () => void;
+    isActive?: boolean;
 };
 
 const ActionsMenu = ({
     open,
     onToggle,
     onClose,
+    items,
     onView,
     onSuspend,
     onReactivate,
-    isActive,
+    isActive = true,
 }: Props) => {
     const buttonRef = useRef<HTMLButtonElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
     const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
-    // Position the menu relative to the button (flip up if no room below)
+    const menuItems: ActionMenuItem[] =
+        items ??
+        [
+            ...(onView ? [{ label: "View", onClick: onView } as ActionMenuItem] : []),
+            ...(isActive
+                ? onSuspend
+                    ? [{ label: "Suspend", onClick: onSuspend, tone: "danger" } as ActionMenuItem]
+                    : []
+                : onReactivate
+                    ? [{ label: "Reactivate", onClick: onReactivate, tone: "success" } as ActionMenuItem]
+                    : []),
+        ];
+
+    const menuHeight = menuItems.length * ITEM_HEIGHT + MENU_PADDING;
+
+    // Position relative to the button; flip upward when there is no room below
     useLayoutEffect(() => {
         if (!open || !buttonRef.current) {
             setPos(null);
@@ -38,15 +72,15 @@ const ActionsMenu = ({
         }
         const rect = buttonRef.current.getBoundingClientRect();
         const spaceBelow = window.innerHeight - rect.bottom;
-        const openUp = spaceBelow < MENU_HEIGHT + EDGE && rect.top > spaceBelow;
+        const openUp = spaceBelow < menuHeight + EDGE && rect.top > spaceBelow;
 
-        const top = openUp ? rect.top - MENU_HEIGHT - GAP : rect.bottom + GAP;
+        const top = openUp ? rect.top - menuHeight - GAP : rect.bottom + GAP;
         const left = Math.min(
             Math.max(EDGE, rect.right - MENU_WIDTH),
             window.innerWidth - MENU_WIDTH - EDGE
         );
         setPos({ top, left });
-    }, [open]);
+    }, [open, menuHeight]);
 
     // Close on outside click, scroll, resize or Escape
     useEffect(() => {
@@ -90,6 +124,7 @@ const ActionsMenu = ({
 
             {open &&
                 pos &&
+                menuItems.length > 0 &&
                 createPortal(
                     <div
                         ref={menuRef}
@@ -97,42 +132,21 @@ const ActionsMenu = ({
                         style={{ position: "fixed", top: pos.top, left: pos.left, width: MENU_WIDTH }}
                         className="z-50 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
                     >
-                        <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => {
-                                onView();
-                                onClose();
-                            }}
-                            className="flex w-full items-center px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                            View
-                        </button>
-                        {isActive ? (
+                        {menuItems.map((item) => (
                             <button
+                                key={item.label}
                                 type="button"
                                 role="menuitem"
+                                disabled={item.disabled}
                                 onClick={() => {
-                                    onSuspend();
+                                    item.onClick();
                                     onClose();
                                 }}
-                                className="flex w-full items-center px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                                className={`flex w-full items-center px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50 ${TONE_CLASS[item.tone ?? "default"]}`}
                             >
-                                Suspend
+                                {item.label}
                             </button>
-                        ) : (
-                            <button
-                                type="button"
-                                role="menuitem"
-                                onClick={() => {
-                                    onReactivate();
-                                    onClose();
-                                }}
-                                className="flex w-full items-center px-3 py-2 text-left text-sm text-green-600 hover:bg-green-50"
-                            >
-                                Reactivate
-                            </button>
-                        )}
+                        ))}
                     </div>,
                     document.body
                 )}

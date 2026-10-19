@@ -1,5 +1,9 @@
 import { Calendar, Search } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+
+const PAGE_SIZE = 5;
+
+type Tab = "rental" | "withdrawals";
 
 const rentalPayments = [
     {
@@ -192,6 +196,8 @@ const withdrawals = [
     },
 ];
 
+/* ---------- small components ---------- */
+
 const StatusBadge = ({ status }: { status: string }) => {
     const styles: Record<string, string> = {
         Successful: "bg-green-100 text-green-700",
@@ -200,7 +206,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     };
     return (
         <span
-            className={`inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] || "bg-gray-100 text-gray-600"
+            className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${styles[status] || "bg-gray-100 text-gray-600"
                 }`}
         >
             {status}
@@ -216,13 +222,115 @@ const Row = ({
     children: React.ReactNode;
 }) => (
     <div className="flex items-start justify-between gap-4">
-        <dt className="text-gray-500 flex-shrink-0">{label}</dt>
-        <dd className="text-gray-900 text-right min-w-0 break-words">{children}</dd>
+        <dt className="flex-shrink-0 text-slate-500">{label}</dt>
+        <dd className="min-w-0 break-words text-right text-slate-900">{children}</dd>
     </div>
 );
 
+const EmptyState = ({ title, description }: { title: string; description: string }) => (
+    <div className="flex min-h-80 items-center justify-center p-6">
+        <div className="w-full max-w-md bg-white px-6 py-10 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-lg font-semibold text-slate-700">
+                !
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+            <p className="mt-2 text-sm text-slate-500">{description}</p>
+        </div>
+    </div>
+);
+
+const Pagination = ({
+    page,
+    totalPages,
+    totalItems,
+    pageSize,
+    onChange,
+}: {
+    page: number;
+    totalPages: number;
+    totalItems: number;
+    pageSize: number;
+    onChange: (page: number) => void;
+}) => {
+    const from = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
+    const to = Math.min(page * pageSize, totalItems);
+
+    return (
+        <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+            <p className="text-xs text-slate-500">
+                <span className="hidden sm:inline">
+                    Showing {from}–{to} of {totalItems} ·{" "}
+                </span>
+                Page {page} of {totalPages}
+            </p>
+            <div className="flex items-center gap-2">
+                <button
+                    type="button"
+                    onClick={() => onChange(Math.max(1, page - 1))}
+                    disabled={page <= 1}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    Previous
+                </button>
+                <button
+                    type="button"
+                    onClick={() => onChange(Math.min(totalPages, page + 1))}
+                    disabled={page >= totalPages}
+                    className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                    Next
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const matchesSearch = (row: Record<string, string>, keys: string[], term: string) =>
+    !term || keys.some((k) => (row[k] ?? "").toLowerCase().includes(term));
+
+/* ---------- page ---------- */
+
 const Payments = () => {
-    const [activeTab, setActiveTab] = useState<"rental" | "withdrawals">("rental");
+    const [activeTab, setActiveTab] = useState<Tab>("rental");
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("All Status");
+    const [page, setPage] = useState(1);
+
+    const term = search.trim().toLowerCase();
+
+    const filteredRental = useMemo(
+        () =>
+            rentalPayments.filter(
+                (r) =>
+                    matchesSearch(r, ["id", "user", "property", "owner"], term) &&
+                    (statusFilter === "All Status" || r.status === statusFilter)
+            ),
+        [term, statusFilter]
+    );
+
+    const filteredWithdrawals = useMemo(
+        () =>
+            withdrawals.filter(
+                (r) =>
+                    matchesSearch(r, ["id", "owner", "property", "bank"], term) &&
+                    (statusFilter === "All Status" || r.status === statusFilter)
+            ),
+        [term, statusFilter]
+    );
+
+    const activeList = activeTab === "rental" ? filteredRental : filteredWithdrawals;
+    const totalItems = activeList.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+    const currentPage = Math.min(page, totalPages);
+    const start = (currentPage - 1) * PAGE_SIZE;
+
+    const pagedRental = filteredRental.slice(start, start + PAGE_SIZE);
+    const pagedWithdrawals = filteredWithdrawals.slice(start, start + PAGE_SIZE);
+
+    const switchTab = (tab: Tab) => {
+        setActiveTab(tab);
+        setPage(1);
+    };
 
     const stats =
         activeTab === "rental"
@@ -241,26 +349,34 @@ const Payments = () => {
                 { label: "Platform Fees", value: "₦509K", icon: "💳" },
             ];
 
+    const tabs: { key: Tab; label: string; count: number }[] = [
+        { key: "rental", label: "Rental Payments", count: rentalPayments.length },
+        { key: "withdrawals", label: "Withdrawals", count: withdrawals.length },
+    ];
+
     return (
-        <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+        <div className="space-y-4 p-4 sm:p-6 lg:p-8">
             {/* Header */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-5 sm:mb-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
-                        Payments
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Platform transaction monitoring
-                    </p>
+                    <h1 className="text-xl font-extrabold text-slate-900 sm:text-2xl">Payments</h1>
+                    <p className="mt-1 text-xs text-slate-500">Platform transaction monitoring</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 md:flex md:items-center">
-                    <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => {
+                            setStatusFilter(e.target.value);
+                            setPage(1);
+                        }}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-600 focus:border-blue-400 focus:outline-none"
+                    >
                         <option>All Status</option>
                         <option>Successful</option>
                         <option>Pending</option>
                         <option>Failed</option>
                     </select>
-                    <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+                    <select className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-600 focus:border-blue-400 focus:outline-none">
                         <option>Last 30 days</option>
                         <option>Last 7 days</option>
                         <option>This month</option>
@@ -269,137 +385,120 @@ const Payments = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-5 sm:mb-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
                 {stats.map((stat, i) => (
                     <div
                         key={stat.label}
-                        className={`bg-white rounded-xl border border-gray-200 p-4 ${i === stats.length - 1 ? "col-span-2 sm:col-span-1" : ""
+                        className={`rounded-xl bg-white p-4 shadow-sm ${i === stats.length - 1 ? "col-span-2 sm:col-span-1" : ""
                             }`}
                     >
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                            <p className="text-sm text-gray-500">{stat.label}</p>
-                            <span className="text-lg">{stat.icon}</span>
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                            <p className="text-xs text-slate-500">{stat.label}</p>
+                            <span className="text-base">{stat.icon}</span>
                         </div>
-                        <p className="text-lg sm:text-xl font-semibold text-gray-900">
-                            {stat.value}
-                        </p>
-                        <p className="text-xs text-green-600 mt-1">↑ +8.4% vs last month</p>
+                        <p className="text-lg font-bold text-slate-900 sm:text-xl">{stat.value}</p>
+                        <p className="mt-1 text-xs text-green-600">↑ +8.4% vs last month</p>
                     </div>
                 ))}
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-full sm:w-fit mb-5">
-                <button
-                    onClick={() => setActiveTab("rental")}
-                    className={`flex-1 sm:flex-none justify-center px-4 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${activeTab === "rental"
-                        ? "bg-gray-900 text-white"
-                        : "text-gray-600 hover:text-gray-900"
-                        }`}
-                >
-                    Rental Payments
-                    <span
-                        className={`text-xs px-1.5 py-0.5 rounded-full ${activeTab === "rental" ? "bg-white/20" : "bg-blue-100 text-blue-700"
+            <div className="inline-flex w-full items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:w-auto">
+                {tabs.map((tab) => (
+                    <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => switchTab(tab.key)}
+                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-5 py-2 text-xs font-semibold transition-colors sm:flex-none ${activeTab === tab.key
+                            ? "bg-slate-900 text-white"
+                            : "text-slate-500 hover:text-slate-800"
                             }`}
                     >
-                        3
-                    </span>
-                </button>
-                <button
-                    onClick={() => setActiveTab("withdrawals")}
-                    className={`flex-1 sm:flex-none justify-center px-4 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${activeTab === "withdrawals"
-                        ? "bg-gray-900 text-white"
-                        : "text-gray-600 hover:text-gray-900"
-                        }`}
-                >
-                    Withdrawals
-                    <span
-                        className={`text-xs px-1.5 py-0.5 rounded-full ${activeTab === "withdrawals"
-                            ? "bg-white/20"
-                            : "bg-blue-100 text-blue-700"
-                            }`}
-                    >
-                        7
-                    </span>
-                </button>
+                        {tab.label}
+                        <span
+                            className={`rounded-full px-1.5 py-0.5 text-[10px] ${activeTab === tab.key ? "bg-white/20" : "bg-blue-100 text-blue-700"
+                                }`}
+                        >
+                            {tab.count}
+                        </span>
+                    </button>
+                ))}
             </div>
 
-            {/* Table Card */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-gray-100 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="relative w-full lg:max-w-md">
+            {/* Table card */}
+            <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="relative w-full sm:max-w-xs">
                         <Search
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                            size={18}
+                            size={16}
+                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                         />
                         <input
                             type="text"
                             placeholder="Search"
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={search}
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setPage(1);
+                            }}
+                            className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none"
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-3 lg:flex lg:items-center">
-                        <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600">
-                            <Calendar size={16} />
+                        <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-xs text-slate-600">
+                            <Calendar size={14} />
                             From
                         </div>
-                        <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600">
-                            <Calendar size={16} />
+                        <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-xs text-slate-600">
+                            <Calendar size={14} />
                             To
                         </div>
                     </div>
                 </div>
 
-                {activeTab === "rental" ? (
+                {totalItems === 0 ? (
+                    <EmptyState
+                        title={activeTab === "rental" ? "No payments found" : "No withdrawals found"}
+                        description="No transactions match your current search or status filter."
+                    />
+                ) : activeTab === "rental" ? (
                     <>
                         {/* Desktop table */}
-                        <div className="hidden lg:block overflow-x-auto">
-                            <table className="w-full text-sm">
+                        <div className="mt-5 hidden overflow-x-auto lg:block">
+                            <table className="w-full min-w-225 border-collapse">
                                 <thead>
-                                    <tr className="bg-gray-50 text-left text-gray-500 font-medium whitespace-nowrap">
-                                        <th className="px-5 py-3">Transaction ID</th>
-                                        <th className="px-5 py-3">User</th>
-                                        <th className="px-5 py-3">Property</th>
-                                        <th className="px-5 py-3">Owner</th>
-                                        <th className="px-5 py-3">Amount</th>
-                                        <th className="px-5 py-3">Platform Fees</th>
-                                        <th className="px-5 py-3">Owner Payout</th>
-                                        <th className="px-5 py-3">Status</th>
-                                        <th className="px-5 py-3">Date & Time</th>
+                                    <tr className="whitespace-nowrap border-b border-slate-100 text-left text-xs font-medium text-slate-500">
+                                        <th className="pb-3 pr-4 font-medium">Transaction ID</th>
+                                        <th className="pb-3 pr-4 font-medium">User</th>
+                                        <th className="pb-3 pr-4 font-medium">Property</th>
+                                        <th className="pb-3 pr-4 font-medium">Owner</th>
+                                        <th className="pb-3 pr-4 font-medium">Amount</th>
+                                        <th className="pb-3 pr-4 font-medium">Platform Fees</th>
+                                        <th className="pb-3 pr-4 font-medium">Owner Payout</th>
+                                        <th className="pb-3 pr-4 font-medium">Status</th>
+                                        <th className="pb-3 font-medium">Date & Time</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {rentalPayments.map((row) => (
-                                        <tr key={row.id} className="hover:bg-gray-50">
-                                            <td className="px-5 py-3.5 font-medium text-gray-900 whitespace-nowrap">
+                                <tbody className="divide-y divide-slate-100">
+                                    {pagedRental.map((row) => (
+                                        <tr key={row.id} className="text-xs transition-colors hover:bg-slate-50">
+                                            <td className="whitespace-nowrap py-4 pr-4 text-sm font-semibold text-slate-900">
                                                 {row.id}
                                             </td>
-                                            <td className="px-5 py-3.5 text-gray-700 whitespace-nowrap">
-                                                {row.user}
+                                            <td className="whitespace-nowrap py-4 pr-4 text-slate-700">{row.user}</td>
+                                            <td className="max-w-[200px] py-4 pr-4">
+                                                <p className="truncate text-slate-900">{row.property}</p>
                                             </td>
-                                            <td className="px-5 py-3.5">
-                                                <p className="text-gray-900 truncate max-w-[180px]">
-                                                    {row.property}
-                                                </p>
-                                            </td>
-                                            <td className="px-5 py-3.5 text-gray-700 whitespace-nowrap">
-                                                {row.owner}
-                                            </td>
-                                            <td className="px-5 py-3.5 font-medium text-gray-900 whitespace-nowrap">
+                                            <td className="whitespace-nowrap py-4 pr-4 text-slate-700">{row.owner}</td>
+                                            <td className="whitespace-nowrap py-4 pr-4 font-medium text-slate-900">
                                                 {row.amount}
                                             </td>
-                                            <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">
-                                                {row.fee}
-                                            </td>
-                                            <td className="px-5 py-3.5 text-gray-700 whitespace-nowrap">
-                                                {row.payout}
-                                            </td>
-                                            <td className="px-5 py-3.5">
+                                            <td className="whitespace-nowrap py-4 pr-4 text-slate-600">{row.fee}</td>
+                                            <td className="whitespace-nowrap py-4 pr-4 text-slate-700">{row.payout}</td>
+                                            <td className="py-4 pr-4">
                                                 <StatusBadge status={row.status} />
                                             </td>
-                                            <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">
-                                                {row.date}
-                                            </td>
+                                            <td className="whitespace-nowrap py-4 text-slate-500">{row.date}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -407,18 +506,15 @@ const Payments = () => {
                         </div>
 
                         {/* Mobile / tablet cards */}
-                        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:hidden">
-                            {rentalPayments.map((row) => (
-                                <div
-                                    key={row.id}
-                                    className="rounded-xl border border-gray-200 p-4"
-                                >
+                        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
+                            {pagedRental.map((row) => (
+                                <div key={row.id} className="rounded-xl border border-slate-200 p-4">
                                     <div className="flex items-start justify-between gap-3">
-                                        <p className="font-medium text-gray-900 text-sm">{row.id}</p>
+                                        <p className="text-sm font-semibold text-slate-900">{row.id}</p>
                                         <StatusBadge status={row.status} />
                                     </div>
-                                    <p className="mt-2 text-sm text-gray-900">{row.property}</p>
-                                    <dl className="mt-3 space-y-1.5 text-sm">
+                                    <p className="mt-2 text-xs text-slate-900">{row.property}</p>
+                                    <dl className="mt-3 space-y-1.5 text-xs">
                                         <Row label="User">{row.user}</Row>
                                         <Row label="Owner">{row.owner}</Row>
                                         <Row label="Amount">
@@ -427,7 +523,7 @@ const Payments = () => {
                                         <Row label="Platform fee">{row.fee}</Row>
                                         <Row label="Owner payout">{row.payout}</Row>
                                     </dl>
-                                    <p className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
+                                    <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
                                         {row.date}
                                     </p>
                                 </div>
@@ -437,54 +533,44 @@ const Payments = () => {
                 ) : (
                     <>
                         {/* Desktop table */}
-                        <div className="hidden lg:block overflow-x-auto">
-                            <table className="w-full text-sm">
+                        <div className="mt-5 hidden overflow-x-auto lg:block">
+                            <table className="w-full min-w-225 border-collapse">
                                 <thead>
-                                    <tr className="bg-gray-50 text-left text-gray-500 font-medium whitespace-nowrap">
-                                        <th className="px-5 py-3">Withdrawal ID</th>
-                                        <th className="px-5 py-3">Owner</th>
-                                        <th className="px-5 py-3">Property</th>
-                                        <th className="px-5 py-3">Bank</th>
-                                        <th className="px-5 py-3">Amount</th>
-                                        <th className="px-5 py-3">Transfer Fees</th>
-                                        <th className="px-5 py-3">Net Disbursed</th>
-                                        <th className="px-5 py-3">Status</th>
-                                        <th className="px-5 py-3">Date & Time</th>
+                                    <tr className="whitespace-nowrap border-b border-slate-100 text-left text-xs font-medium text-slate-500">
+                                        <th className="pb-3 pr-4 font-medium">Withdrawal ID</th>
+                                        <th className="pb-3 pr-4 font-medium">Owner</th>
+                                        <th className="pb-3 pr-4 font-medium">Property</th>
+                                        <th className="pb-3 pr-4 font-medium">Bank</th>
+                                        <th className="pb-3 pr-4 font-medium">Amount</th>
+                                        <th className="pb-3 pr-4 font-medium">Transfer Fees</th>
+                                        <th className="pb-3 pr-4 font-medium">Net Disbursed</th>
+                                        <th className="pb-3 pr-4 font-medium">Status</th>
+                                        <th className="pb-3 font-medium">Date & Time</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {withdrawals.map((row) => (
-                                        <tr key={row.id} className="hover:bg-gray-50">
-                                            <td className="px-5 py-3.5 font-medium text-gray-900 whitespace-nowrap">
+                                <tbody className="divide-y divide-slate-100">
+                                    {pagedWithdrawals.map((row) => (
+                                        <tr key={row.id} className="text-xs transition-colors hover:bg-slate-50">
+                                            <td className="whitespace-nowrap py-4 pr-4 text-sm font-semibold text-slate-900">
                                                 {row.id}
                                             </td>
-                                            <td className="px-5 py-3.5 text-gray-700 whitespace-nowrap">
-                                                {row.owner}
+                                            <td className="whitespace-nowrap py-4 pr-4 text-slate-700">{row.owner}</td>
+                                            <td className="max-w-[200px] py-4 pr-4">
+                                                <p className="truncate text-slate-900">{row.property}</p>
                                             </td>
-                                            <td className="px-5 py-3.5">
-                                                <p className="text-gray-900 truncate max-w-[180px]">
-                                                    {row.property}
-                                                </p>
+                                            <td className="whitespace-nowrap py-4 pr-4">
+                                                <p className="text-slate-900">{row.bank}</p>
+                                                <p className="text-xs text-slate-500">{row.account}</p>
                                             </td>
-                                            <td className="px-5 py-3.5 whitespace-nowrap">
-                                                <p className="text-gray-900">{row.bank}</p>
-                                                <p className="text-xs text-gray-500">{row.account}</p>
-                                            </td>
-                                            <td className="px-5 py-3.5 font-medium text-gray-900 whitespace-nowrap">
+                                            <td className="whitespace-nowrap py-4 pr-4 font-medium text-slate-900">
                                                 {row.amount}
                                             </td>
-                                            <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">
-                                                {row.fee}
-                                            </td>
-                                            <td className="px-5 py-3.5 text-gray-700 whitespace-nowrap">
-                                                {row.net}
-                                            </td>
-                                            <td className="px-5 py-3.5">
+                                            <td className="whitespace-nowrap py-4 pr-4 text-slate-600">{row.fee}</td>
+                                            <td className="whitespace-nowrap py-4 pr-4 text-slate-700">{row.net}</td>
+                                            <td className="py-4 pr-4">
                                                 <StatusBadge status={row.status} />
                                             </td>
-                                            <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">
-                                                {row.date}
-                                            </td>
+                                            <td className="whitespace-nowrap py-4 text-slate-500">{row.date}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -492,24 +578,19 @@ const Payments = () => {
                         </div>
 
                         {/* Mobile / tablet cards */}
-                        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:hidden">
-                            {withdrawals.map((row) => (
-                                <div
-                                    key={row.id}
-                                    className="rounded-xl border border-gray-200 p-4"
-                                >
+                        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
+                            {pagedWithdrawals.map((row) => (
+                                <div key={row.id} className="rounded-xl border border-slate-200 p-4">
                                     <div className="flex items-start justify-between gap-3">
-                                        <p className="font-medium text-gray-900 text-sm">{row.id}</p>
+                                        <p className="text-sm font-semibold text-slate-900">{row.id}</p>
                                         <StatusBadge status={row.status} />
                                     </div>
-                                    <p className="mt-2 text-sm text-gray-900">{row.property}</p>
-                                    <dl className="mt-3 space-y-1.5 text-sm">
+                                    <p className="mt-2 text-xs text-slate-900">{row.property}</p>
+                                    <dl className="mt-3 space-y-1.5 text-xs">
                                         <Row label="Owner">{row.owner}</Row>
                                         <Row label="Bank">
                                             {row.bank}
-                                            <span className="block text-xs text-gray-500">
-                                                {row.account}
-                                            </span>
+                                            <span className="block text-xs text-slate-500">{row.account}</span>
                                         </Row>
                                         <Row label="Amount">
                                             <span className="font-medium">{row.amount}</span>
@@ -517,7 +598,7 @@ const Payments = () => {
                                         <Row label="Transfer fee">{row.fee}</Row>
                                         <Row label="Net disbursed">{row.net}</Row>
                                     </dl>
-                                    <p className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-500">
+                                    <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
                                         {row.date}
                                     </p>
                                 </div>
@@ -525,6 +606,14 @@ const Payments = () => {
                         </div>
                     </>
                 )}
+
+                <Pagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    pageSize={PAGE_SIZE}
+                    onChange={setPage}
+                />
             </div>
         </div>
     );

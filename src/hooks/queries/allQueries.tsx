@@ -376,3 +376,51 @@ export const useGetNotifications = (page = 1) => {
         refetch,
     };
 };
+
+
+export const useUnreadNotificationCount = () => {
+    const { data } = useQuery({
+        // same key as page 1 of the Notifications page, so they share one cache
+        // entry and the badge updates when notifications are marked as read
+        queryKey: ["notifications", 1],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || "";
+            return get_requests(`notifications/?page=1`, token);
+        },
+        enabled: Boolean(localStorage.getItem("pknockAdminToken")),
+        refetchInterval: 60_000,
+    });
+
+    const payload = (data as any)?.data ?? data;
+    const results: { read_at?: string | null }[] = Array.isArray(payload?.results)
+        ? payload.results
+        : Array.isArray(payload)
+            ? payload
+            : [];
+
+    const unreadCount = results.filter((n) => !n.read_at).length;
+    const hasMore =
+        Boolean(payload?.next) && results.length > 0 && unreadCount === results.length;
+
+    return { unreadCount, hasMore };
+};
+
+
+export const useGetProperty = (id?: string) => {
+    const { data, isLoading, isError, isFetched, refetch } = useQuery({
+        queryKey: ["property", id],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || "";
+            return get_requests(`properties/properties/${id}/`, token);
+        },
+        enabled: Boolean(id),
+    });
+
+    return {
+        property: data,
+        isLoading,
+        isError,
+        isFetched,
+        refetch,
+    };
+};

@@ -93,7 +93,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     const isActive = status === "Active"
     return (
         <span
-            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${isActive ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${isActive ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
                 }`}
         >
             <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-green-500" : "bg-amber-500"}`} />
@@ -370,62 +370,60 @@ const VerificationOfficers = () => {
     return (
         <>
             <LoadingOverlay visible={isLoading} />
-            <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
-                <div className="mb-5 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-4 p-4 sm:p-6 lg:p-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl">
+                        <h1 className="text-xl font-extrabold text-slate-900 sm:text-2xl">
                             Verification Officers
                         </h1>
-                        <p className="mt-1 text-sm text-gray-500">
+                        <p className="mt-1 text-xs text-slate-500">
                             {totalCount} officers total · {activeCount} active · {suspendedCount}{" "}
                             suspended (this page)
                         </p>
                     </div>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 sm:w-auto"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700 sm:w-auto"
                     >
-                        <Plus size={18} />
+                        <Plus size={16} />
                         Create Verification Officer
                     </button>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                    <div className="border-b border-gray-100 p-4">
-                        <div className="relative w-full md:max-w-md">
-                            <Search
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                                size={18}
-                            />
-                            <input
-                                type="text"
-                                placeholder="Search by name, ID or area"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
+                <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+                    <div className="relative w-full sm:max-w-xs">
+                        <Search
+                            size={16}
+                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Search by name, ID or area"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none"
+                        />
                     </div>
 
                     {/* Desktop table */}
-                    <div className="hidden overflow-x-auto lg:block">
-                        <table className="w-full text-sm">
+                    <div className="mt-5 hidden overflow-x-auto lg:block">
+                        <table className="w-full min-w-225 border-collapse">
                             <thead>
-                                <tr className="whitespace-nowrap bg-gray-50 text-left font-medium text-gray-500">
-                                    <th className="px-6 py-3">Officer</th>
-                                    <th className="px-6 py-3">PVO ID</th>
-                                    <th className="px-6 py-3">Coverage Area</th>
-                                    <th className="px-6 py-3">Status</th>
-                                    <th className="px-6 py-3 text-center">Assigned</th>
-                                    <th className="px-6 py-3 text-center">Completed</th>
-                                    <th className="px-6 py-3 text-center">Pending</th>
-                                    <th className="px-6 py-3">Action</th>
+                                <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-500">
+                                    <th className="pb-3 pr-4 font-medium">Officer</th>
+                                    <th className="pb-3 pr-4 font-medium">PVO ID</th>
+                                    <th className="pb-3 pr-4 font-medium">Coverage Area</th>
+                                    <th className="pb-3 pr-4 font-medium">Status</th>
+                                    <th className="pb-3 pr-4 text-center font-medium">Assigned</th>
+                                    <th className="pb-3 pr-4 text-center font-medium">Completed</th>
+                                    <th className="pb-3 pr-4 text-center font-medium">Pending</th>
+                                    <th className="pb-3 font-medium">Action</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-slate-100">
                                 {!filtered.length ? (
                                     <tr>
-                                        <td colSpan={9}>
+                                        <td colSpan={8}>
                                             <EmptyState
                                                 title="No verification officers found"
                                                 description={
@@ -440,30 +438,30 @@ const VerificationOfficers = () => {
                                     filtered.map((officer) => (
                                         <tr
                                             key={officer.user_id}
-                                            className="transition-colors hover:bg-gray-50"
+                                            className="text-xs transition-colors hover:bg-slate-50"
                                         >
-                                            <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
+                                            <td className="whitespace-nowrap py-4 pr-4 text-sm font-semibold text-slate-900">
                                                 {officer.name}
                                             </td>
-                                            <td className="whitespace-nowrap px-6 py-4 text-gray-600">
+                                            <td className="whitespace-nowrap py-4 pr-4 text-slate-600">
                                                 {officer.displayId}
                                             </td>
-                                            <td className="px-6 py-4 text-gray-600">
+                                            <td className="py-4 pr-4 text-slate-600">
                                                 {officer.coverage}
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="py-4 pr-4">
                                                 <StatusBadge status={officer.status} />
                                             </td>
-                                            <td className="px-6 py-4 text-center text-gray-700">
+                                            <td className="py-4 pr-4 text-center text-slate-700">
                                                 {officer.assigned}
                                             </td>
-                                            <td className="px-6 py-4 text-center text-gray-700">
+                                            <td className="py-4 pr-4 text-center text-slate-700">
                                                 {officer.completed}
                                             </td>
-                                            <td className="px-6 py-4 text-center text-gray-700">
+                                            <td className="py-4 pr-4 text-center text-slate-700">
                                                 {officer.pending}
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="py-4">
                                                 <ActionsMenu
                                                     open={openMenuId === officer.user_id}
                                                     onToggle={() =>
@@ -496,7 +494,7 @@ const VerificationOfficers = () => {
                     </div>
 
                     {/* Mobile cards */}
-                    <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:hidden">
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
                         {filtered.length === 0 ? (
                             <div className="col-span-full">
                                 <EmptyState
@@ -508,14 +506,14 @@ const VerificationOfficers = () => {
                             filtered.map((officer) => (
                                 <div
                                     key={officer.id}
-                                    className="rounded-xl border border-gray-200 p-4"
+                                    className="rounded-xl border border-slate-200 p-4"
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
-                                            <p className="truncate font-medium text-gray-900">
+                                            <p className="truncate text-sm font-semibold text-slate-900">
                                                 {officer.name}
                                             </p>
-                                            <p className="mt-0.5 text-xs text-gray-500">
+                                            <p className="mt-0.5 text-xs text-slate-500">
                                                 {officer.displayId}
                                             </p>
                                         </div>
@@ -542,18 +540,18 @@ const VerificationOfficers = () => {
                                             />
                                         </div>
                                     </div>
-                                    <p className="mt-2 text-sm text-gray-600">{officer.coverage}</p>
-                                    <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-gray-50 p-3 text-center">
+                                    <p className="mt-2 text-xs text-slate-600">{officer.coverage}</p>
+                                    <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-slate-50 p-3 text-center">
                                         {[
                                             ["Assigned", officer.assigned],
                                             ["Completed", officer.completed],
                                             ["Pending", officer.pending],
                                         ].map(([label, value]) => (
                                             <div key={label as string}>
-                                                <p className="text-sm font-semibold text-gray-900">
+                                                <p className="text-sm font-semibold text-slate-900">
                                                     {value}
                                                 </p>
-                                                <p className="mt-0.5 text-xs text-gray-500">
+                                                <p className="mt-0.5 text-[10px] leading-tight text-slate-500">
                                                     {label}
                                                 </p>
                                             </div>
@@ -565,23 +563,23 @@ const VerificationOfficers = () => {
                     </div>
 
                     {/* Pagination */}
-                    <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-4 sm:px-6">
-                        <p className="text-sm text-gray-500">Page {page}</p>
+                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                        <p className="text-xs text-slate-500">Page {page}</p>
                         <div className="flex items-center gap-1">
                             <button
                                 disabled={!hasPreviousPage || page <= 1}
                                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                className="h-8 w-8 rounded-md text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-40"
+                                className="h-8 w-8 rounded-md text-sm text-slate-600 hover:bg-slate-100 disabled:opacity-40"
                             >
                                 ‹
                             </button>
-                            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-900 text-sm font-medium text-white">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-xs font-medium text-white">
                                 {page}
                             </span>
                             <button
                                 disabled={!hasNextPage}
                                 onClick={() => setPage((p) => p + 1)}
-                                className="h-8 w-8 rounded-md text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-40"
+                                className="h-8 w-8 rounded-md text-sm text-slate-600 hover:bg-slate-100 disabled:opacity-40"
                             >
                                 ›
                             </button>

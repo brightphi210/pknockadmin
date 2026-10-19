@@ -152,3 +152,18 @@ export const useMarkAllNotificationsRead = () => {
     },
   });
 };
+
+
+export const useApproveListing = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const token = (await localStorage.getItem("pknockAdminToken")) || "";
+      return post_requests(`properties/properties/${id}/approve_listing/`, {}, token);
+    },
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ["property", id] });
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+    },
+  });
+};

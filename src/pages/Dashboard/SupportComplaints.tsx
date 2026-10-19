@@ -66,7 +66,7 @@ const statusStyles: Record<string, string> = {
 
 const StatusBadge = ({ status }: { status?: string }) => (
     <span
-        className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${statusStyles[(status ?? "").toLowerCase()] || "bg-gray-100 text-gray-600"
+        className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[(status ?? "").toLowerCase()] || "bg-gray-100 text-gray-600"
             }`}
     >
         {humanize(status)}
@@ -87,8 +87,8 @@ const EmptyState = ({ title, description }: { title: string; description: string
 
 const Detail = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <div>
-        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{label}</p>
-        <div className="mt-1 text-sm text-gray-800">{children}</div>
+        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{label}</p>
+        <div className="mt-1 text-xs font-medium text-slate-800">{children}</div>
     </div>
 );
 
@@ -188,7 +188,7 @@ const SupportComplaints = () => {
 
     if (isError) {
         return (
-            <div className="space-y-4 p-4 sm:p-6">
+            <div className="space-y-4 p-4 sm:p-6 lg:p-8">
                 <EmptyState
                     title="Could not load complaints"
                     description="Please refresh the page or try again in a few moments."
@@ -197,7 +197,7 @@ const SupportComplaints = () => {
                     <button
                         type="button"
                         onClick={() => refetch()}
-                        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                        className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800"
                     >
                         Retry
                     </button>
@@ -211,32 +211,30 @@ const SupportComplaints = () => {
     return (
         <>
             <LoadingOverlay visible={isLoading} />
-            <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
-                <div className="mb-5 sm:mb-6">
-                    <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl">
+            <div className="space-y-4 p-4 sm:p-6 lg:p-8">
+                <div>
+                    <h1 className="text-xl font-extrabold text-slate-900 sm:text-2xl">
                         Support & Complaints
                     </h1>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1 text-xs text-slate-500">
                         {totalCount} complaint{totalCount === 1 ? "" : "s"} total
                     </p>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
                     {/* Search */}
-                    <div className="border-b border-gray-100 p-4">
-                        <div className="relative w-full md:max-w-md">
-                            <Search
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                                size={18}
-                            />
-                            <input
-                                type="text"
-                                placeholder="Search by ID, category or description"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
+                    <div className="relative w-full sm:max-w-xs">
+                        <Search
+                            size={16}
+                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none"
+                        />
                     </div>
 
                     {!filtered.length ? (
@@ -251,64 +249,64 @@ const SupportComplaints = () => {
                     ) : (
                         <>
                             {/* Desktop table */}
-                            <div className="hidden overflow-x-auto lg:block">
-                                <table className="w-full text-sm">
+                            <div className="mt-5 hidden overflow-x-auto lg:block">
+                                <table className="w-full min-w-225 border-collapse">
                                     <thead>
-                                        <tr className="whitespace-nowrap bg-gray-50 text-left font-medium text-gray-500">
-                                            <th className="px-6 py-3">Complaint ID</th>
-                                            <th className="px-6 py-3">Category</th>
-                                            <th className="px-6 py-3">Description</th>
-                                            <th className="px-6 py-3">Submitted</th>
-                                            <th className="px-6 py-3">SLA Due</th>
-                                            <th className="px-6 py-3">Status</th>
-                                            <th className="px-6 py-3">Action</th>
+                                        <tr className="whitespace-nowrap border-b border-slate-100 text-left text-xs font-medium text-slate-500">
+                                            <th className="pb-3 pr-4 font-medium">Complaint ID</th>
+                                            <th className="pb-3 pr-4 font-medium">Category</th>
+                                            <th className="pb-3 pr-4 font-medium">Description</th>
+                                            <th className="pb-3 pr-4 font-medium">Submitted</th>
+                                            <th className="pb-3 pr-4 font-medium">SLA Due</th>
+                                            <th className="pb-3 pr-4 font-medium">Status</th>
+                                            <th className="pb-3 font-medium">Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-100">
+                                    <tbody className="divide-y divide-slate-100">
                                         {filtered.map((c, index) => {
                                             const overdue = isOverdue(c);
                                             return (
                                                 <tr
                                                     key={c.id ?? c.display_id ?? index}
                                                     onClick={() => openComplaint(c)}
-                                                    className="cursor-pointer transition-colors hover:bg-gray-50"
+                                                    className="cursor-pointer text-xs transition-colors hover:bg-slate-50"
                                                 >
-                                                    <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
+                                                    <td className="whitespace-nowrap py-4 pr-4 text-sm font-semibold text-slate-900">
                                                         <span className="inline-flex items-center gap-1.5">
                                                             {c.display_id || "—"}
                                                             {c.has_evidence && (
                                                                 <Paperclip
                                                                     size={13}
-                                                                    className="text-gray-400"
+                                                                    className="text-slate-400"
                                                                     aria-label="Has evidence"
                                                                 />
                                                             )}
                                                         </span>
                                                     </td>
-                                                    <td className="whitespace-nowrap px-6 py-4">
-                                                        <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                                                    <td className="whitespace-nowrap py-4 pr-4">
+                                                        <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
                                                             {humanize(c.category)}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-4">
-                                                        <p className="max-w-xs truncate text-gray-600">
+                                                    <td className="py-4 pr-4">
+                                                        <p className="max-w-xs truncate text-slate-600">
                                                             {c.description || "—"}
                                                         </p>
                                                     </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-gray-600">
+                                                    <td className="whitespace-nowrap py-4 pr-4 text-slate-500">
                                                         {formatDateTime(c.created_at)}
                                                     </td>
                                                     <td
-                                                        className={`whitespace-nowrap px-6 py-4 ${overdue ? "font-medium text-red-600" : "text-gray-600"
+                                                        className={`whitespace-nowrap py-4 pr-4 ${overdue ? "font-medium text-red-600" : "text-slate-500"
                                                             }`}
                                                     >
                                                         {formatDateTime(c.sla_due_at)}
                                                         {overdue && " (overdue)"}
                                                     </td>
-                                                    <td className="px-6 py-4">
+                                                    <td className="py-4 pr-4">
                                                         <StatusBadge status={c.status} />
                                                     </td>
-                                                    <td className="px-6 py-4">
+                                                    <td className="py-4">
                                                         <button
                                                             type="button"
                                                             onClick={(e) => {
@@ -328,7 +326,7 @@ const SupportComplaints = () => {
                             </div>
 
                             {/* Mobile cards */}
-                            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:hidden">
+                            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
                                 {filtered.map((c, index) => {
                                     const overdue = isOverdue(c);
                                     return (
@@ -336,25 +334,25 @@ const SupportComplaints = () => {
                                             key={c.id ?? c.display_id ?? index}
                                             type="button"
                                             onClick={() => openComplaint(c)}
-                                            className="rounded-xl border border-gray-200 p-4 text-left transition-colors hover:bg-gray-50"
+                                            className="rounded-xl border border-slate-200 p-4 text-left transition-colors hover:bg-slate-50"
                                         >
                                             <div className="flex items-start justify-between gap-3">
-                                                <p className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                                                <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-900">
                                                     {c.display_id || "—"}
                                                     {c.has_evidence && (
-                                                        <Paperclip size={13} className="text-gray-400" />
+                                                        <Paperclip size={13} className="text-slate-400" />
                                                     )}
                                                 </p>
                                                 <StatusBadge status={c.status} />
                                             </div>
-                                            <span className="mt-2 inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                                            <span className="mt-2 inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
                                                 {humanize(c.category)}
                                             </span>
-                                            <p className="mt-2 line-clamp-2 text-sm text-gray-600">
+                                            <p className="mt-2 line-clamp-2 text-xs text-slate-600">
                                                 {c.description || "—"}
                                             </p>
-                                            <div className="mt-3 flex items-center justify-between gap-2 border-t border-gray-100 pt-3 text-xs">
-                                                <span className="text-gray-500">
+                                            <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3 text-xs">
+                                                <span className="text-slate-500">
                                                     {formatDateTime(c.created_at)}
                                                 </span>
                                                 {overdue && (
@@ -369,8 +367,8 @@ const SupportComplaints = () => {
                     )}
 
                     {/* Pagination */}
-                    <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-4 sm:px-6">
-                        <p className="text-sm text-gray-500">
+                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                        <p className="text-xs text-slate-500">
                             Page {page} of {totalPages}
                         </p>
                         <div className="flex items-center gap-2">
@@ -378,7 +376,7 @@ const SupportComplaints = () => {
                                 type="button"
                                 onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                                 disabled={!hasPreviousPage || page === 1}
-                                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 Previous
                             </button>
@@ -386,7 +384,7 @@ const SupportComplaints = () => {
                                 type="button"
                                 onClick={() => setPage((prev) => prev + 1)}
                                 disabled={!hasNextPage}
-                                className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+                                className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
                                 Next
                             </button>
@@ -409,7 +407,7 @@ const SupportComplaints = () => {
                             type="button"
                             onClick={closeModal}
                             disabled={sending}
-                            className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50 sm:py-2"
+                            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
                         >
                             Close
                         </button>
@@ -417,7 +415,7 @@ const SupportComplaints = () => {
                             type="button"
                             onClick={handleSend}
                             disabled={sending || !reply.trim()}
-                            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-60 sm:py-2"
+                            className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-60"
                         >
                             {sending ? "Sending…" : "Send Reply"}
                         </button>
@@ -444,10 +442,10 @@ const SupportComplaints = () => {
                         </div>
 
                         <div>
-                            <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
                                 Description
                             </p>
-                            <div className="mt-1.5 max-h-56 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-gray-50 p-3.5 text-sm text-gray-800">
+                            <div className="mt-1.5 max-h-56 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-800">
                                 {selected.description || "No description provided."}
                             </div>
                         </div>
@@ -455,7 +453,7 @@ const SupportComplaints = () => {
                         <div>
                             <label
                                 htmlFor="complaint-reply"
-                                className="text-[11px] font-medium uppercase tracking-wide text-gray-400"
+                                className="text-[11px] font-medium uppercase tracking-wide text-slate-400"
                             >
                                 Your reply
                             </label>
@@ -470,9 +468,9 @@ const SupportComplaints = () => {
                                     setReplyError("");
                                 }}
                                 placeholder="Type your reply to the user…"
-                                className={`mt-1.5 w-full resize-none rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 disabled:bg-gray-50 ${replyError
+                                className={`mt-1.5 w-full resize-none rounded-xl border px-3.5 py-2.5 text-xs focus:outline-none focus:ring-2 disabled:bg-slate-50 ${replyError
                                     ? "border-red-300 focus:ring-red-400"
-                                    : "border-gray-200 focus:ring-blue-500"
+                                    : "border-slate-200 focus:ring-blue-500"
                                     }`}
                             />
                             <div className="mt-1 flex items-start justify-between gap-3">
@@ -481,7 +479,7 @@ const SupportComplaints = () => {
                                 ) : (
                                     <span />
                                 )}
-                                <p className="flex-shrink-0 text-xs text-gray-400">
+                                <p className="flex-shrink-0 text-xs text-slate-400">
                                     {reply.length}/{MAX_REPLY}
                                 </p>
                             </div>

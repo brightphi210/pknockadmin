@@ -218,31 +218,6 @@ const Login = () => {
                             {!isPending && <ArrowRight className="h-4 w-4" />}
                         </button>
                     </form>
-
-                    <div className="my-5 flex items-center gap-3">
-                        <div className="h-px flex-1 bg-gray-200" />
-                        <span className="text-xs text-gray-400">Or continue with</span>
-                        <div className="h-px flex-1 bg-gray-200" />
-                    </div>
-
-                    <button
-                        type="button"
-                        disabled={isPending}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60"
-                    >
-                        <GoogleIcon />
-                        Continue with Google
-                    </button>
-
-                    <p className="mt-5 text-center text-sm text-gray-500">
-                        Don't have an account?{" "}
-                        <Link
-                            to="/register" // or "/signup"
-                            className="font-medium text-blue-600 hover:underline"
-                        >
-                            Create Account
-                        </Link>
-                    </p>
                 </div>
             </div>
         </div>

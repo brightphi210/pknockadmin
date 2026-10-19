@@ -12,6 +12,7 @@ import {
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LoadingOverlay from "../../components/LoadingOverlay";
+import ActionsMenu from "../../components/UI/ActionMenu";
 import { useGetInspections } from "../../hooks/queries/allQueries";
 
 type InspectionRecord = {
@@ -134,7 +135,7 @@ const statusStyles: Record<string, string> = {
 
 const StatusBadge = ({ status }: { status?: string }) => (
     <span
-        className={`inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyles[(status ?? "").toLowerCase()] || "bg-gray-100 text-gray-600"
+        className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[(status ?? "").toLowerCase()] || "bg-gray-100 text-gray-600"
             }`}
     >
         {normalizeStatus(status)}
@@ -167,8 +168,8 @@ const Row = ({
     children: React.ReactNode;
 }) => (
     <div className="flex items-start justify-between gap-4">
-        <dt className="text-gray-500 flex-shrink-0">{label}</dt>
-        <dd className="text-gray-700 text-right min-w-0 break-words">{children}</dd>
+        <dt className="flex-shrink-0 text-slate-500">{label}</dt>
+        <dd className="min-w-0 break-words text-right text-slate-700">{children}</dd>
     </div>
 );
 
@@ -178,6 +179,7 @@ const Inspection = () => {
     const [activeTab, setActiveTab] = useState<"property" | "tenant">("property");
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
     const { inspections: response, isLoading, isError, refetch } = useGetInspections(page);
 
@@ -226,64 +228,69 @@ const Inspection = () => {
     // TODO: open your assign-PVO modal here once the assign endpoint is ready
     const assignPvo = (_item: InspectionRecord) => { };
 
+    const getMenuItems = (item: InspectionRecord): any[] => [
+        { label: "View", onClick: () => viewInspection(item.id) },
+        {
+            label: item.staff_id ? "Re-assign PVO" : "Assign PVO",
+            onClick: () => assignPvo(item),
+            tone: "primary",
+        },
+    ];
+
     return (
         <>
             <LoadingOverlay visible={activeTab === "property" && isLoading} />
-            <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+            <div className="space-y-4 p-4 sm:p-6 lg:p-8">
                 {/* Header */}
-                <div className="mb-5 sm:mb-6">
-                    <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
-                        Inspections
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1">
+                <div>
+                    <h1 className="text-xl font-extrabold text-slate-900 sm:text-2xl">Inspections</h1>
+                    <p className="mt-1 text-xs text-slate-500">
                         {totalCount} inspection{totalCount === 1 ? "" : "s"} total
                     </p>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-full sm:w-fit mb-5 sm:mb-6">
-                    <button
-                        onClick={() => setActiveTab("property")}
-                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === "property"
-                            ? "bg-gray-900 text-white"
-                            : "text-gray-600 hover:text-gray-900"
-                            }`}
-                    >
-                        Property Verification
-                    </button>
-                    <button
-                        onClick={() => setActiveTab("tenant")}
-                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === "tenant"
-                            ? "bg-gray-900 text-white"
-                            : "text-gray-600 hover:text-gray-900"
-                            }`}
-                    >
-                        Tenant Inspection
-                    </button>
+                <div className="inline-flex w-full items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:w-auto">
+                    {(
+                        [
+                            ["property", "Property Verification"],
+                            ["tenant", "Tenant Inspection"],
+                        ] as const
+                    ).map(([key, label]) => (
+                        <button
+                            key={key}
+                            type="button"
+                            onClick={() => setActiveTab(key)}
+                            className={`flex-1 rounded-xl px-5 py-2 text-xs font-semibold transition-colors sm:flex-none ${activeTab === key
+                                ? "bg-slate-900 text-white"
+                                : "text-slate-500 hover:text-slate-800"
+                                }`}
+                        >
+                            {label}
+                        </button>
+                    ))}
                 </div>
 
                 {/* ===================== PROPERTY VERIFICATION TAB ===================== */}
                 {activeTab === "property" && (
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
                         {/* Search */}
-                        <div className="p-4 border-b border-gray-100">
-                            <div className="relative w-full md:max-w-md">
-                                <Search
-                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                                    size={18}
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Search by ID, property, seeker or PVO"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
-                            </div>
+                        <div className="relative w-full sm:max-w-xs">
+                            <Search
+                                size={16}
+                                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                            />
+                            <input
+                                type="text"
+                                placeholder="Search"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none"
+                            />
                         </div>
 
                         {isError ? (
-                            <div className="pb-6">
+                            <div className="pb-2">
                                 <EmptyState
                                     title="Could not load inspections"
                                     description="Please refresh the page or try again in a few moments."
@@ -292,7 +299,7 @@ const Inspection = () => {
                                     <button
                                         type="button"
                                         onClick={() => refetch()}
-                                        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                                        className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800"
                                     >
                                         Retry
                                     </button>
@@ -310,64 +317,56 @@ const Inspection = () => {
                         ) : (
                             <>
                                 {/* Desktop table */}
-                                <div className="hidden lg:block overflow-x-auto">
-                                    <table className="w-full text-sm">
+                                <div className="mt-5 hidden overflow-x-auto lg:block">
+                                    <table className="w-full min-w-225 border-collapse">
                                         <thead>
-                                            <tr className="bg-gray-50 text-left text-gray-500 font-medium whitespace-nowrap">
-                                                <th className="px-6 py-3">Inspection ID</th>
-                                                <th className="px-6 py-3">Property</th>
-                                                <th className="px-6 py-3">Seeker</th>
-                                                <th className="px-6 py-3">Date & Time</th>
-                                                <th className="px-6 py-3">PVO</th>
-                                                <th className="px-6 py-3">Status</th>
-                                                <th className="px-6 py-3">Action</th>
+                                            <tr className="border-b border-slate-100 text-left text-xs font-medium text-slate-500">
+                                                <th className="pb-3 pr-4 font-medium">Inspection ID</th>
+                                                <th className="pb-3 pr-4 font-medium">Property</th>
+                                                <th className="pb-3 pr-4 font-medium">Seeker</th>
+                                                <th className="pb-3 pr-4 font-medium">Date & Time</th>
+                                                <th className="pb-3 pr-4 font-medium">PVO</th>
+                                                <th className="pb-3 pr-4 font-medium">Status</th>
+                                                <th className="pb-3 font-medium">Action</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-100">
+                                        <tbody className="divide-y divide-slate-100">
                                             {filtered.map((item, index) => {
                                                 const key = item.id ?? item.display_id ?? String(index);
-                                                const assigned = Boolean(item.staff_id);
+                                                const menuId = `table-${key}`;
                                                 return (
-                                                    <tr key={key} className="hover:bg-gray-50 transition-colors">
-                                                        <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                                                    <tr key={key} className="text-xs transition-colors hover:bg-slate-50">
+                                                        <td className="whitespace-nowrap py-4 pr-4 text-sm font-semibold text-slate-900">
                                                             {item.display_id || "—"}
                                                         </td>
-                                                        <td className="px-6 py-4">
-                                                            <p className="font-medium text-gray-900 truncate max-w-[260px]">
+                                                        <td className="max-w-[260px] py-4 pr-4">
+                                                            <p className="truncate text-sm font-semibold text-slate-900">
                                                                 {item.property_title || "—"}
                                                             </p>
                                                         </td>
-                                                        <td className="px-6 py-4 text-gray-700 whitespace-nowrap">
+                                                        <td className="whitespace-nowrap py-4 pr-4 text-slate-700">
                                                             {item.seeker_name || "—"}
                                                         </td>
-                                                        <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
+                                                        <td className="whitespace-nowrap py-4 pr-4 text-slate-500">
                                                             {formatDateTime(item.requested_date)}
                                                         </td>
-                                                        <td className="px-6 py-4 text-gray-700 whitespace-nowrap">
+                                                        <td className="whitespace-nowrap py-4 pr-4 text-slate-700">
                                                             {item.pvo_name || (
-                                                                <span className="text-gray-400">Unassigned</span>
+                                                                <span className="text-slate-400">Unassigned</span>
                                                             )}
                                                         </td>
-                                                        <td className="px-6 py-4">
+                                                        <td className="py-4 pr-4">
                                                             <StatusBadge status={item.status} />
                                                         </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="flex items-center gap-3 whitespace-nowrap">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => assignPvo(item)}
-                                                                    className="text-blue-600 hover:text-blue-700 font-medium"
-                                                                >
-                                                                    {assigned ? "Re-assign" : "Assign PVO"}
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => viewInspection(item.id)}
-                                                                    className="text-gray-600 hover:text-gray-800 font-medium"
-                                                                >
-                                                                    View
-                                                                </button>
-                                                            </div>
+                                                        <td className="py-4">
+                                                            <ActionsMenu
+                                                                open={openMenuId === menuId}
+                                                                onToggle={() =>
+                                                                    setOpenMenuId((prev) => (prev === menuId ? null : menuId))
+                                                                }
+                                                                onClose={() => setOpenMenuId(null)}
+                                                                items={getMenuItems(item)}
+                                                            />
                                                         </td>
                                                     </tr>
                                                 );
@@ -377,53 +376,41 @@ const Inspection = () => {
                                 </div>
 
                                 {/* Mobile / tablet cards */}
-                                <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:hidden">
+                                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
                                     {filtered.map((item, index) => {
                                         const key = item.id ?? item.display_id ?? String(index);
-                                        const assigned = Boolean(item.staff_id);
+                                        const menuId = `card-${key}`;
                                         return (
-                                            <div
-                                                key={key}
-                                                className="rounded-xl border border-gray-200 p-4"
-                                            >
+                                            <div key={key} className="rounded-xl border border-slate-200 p-4">
                                                 <div className="flex items-start justify-between gap-3">
-                                                    <p className="text-sm font-medium text-gray-500">
-                                                        {item.display_id || "—"}
-                                                    </p>
-                                                    <StatusBadge status={item.status} />
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs text-slate-500">{item.display_id || "—"}</p>
+                                                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                                                            {item.property_title || "—"}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex flex-shrink-0 items-center gap-1">
+                                                        <StatusBadge status={item.status} />
+                                                        <ActionsMenu
+                                                            open={openMenuId === menuId}
+                                                            onToggle={() =>
+                                                                setOpenMenuId((prev) => (prev === menuId ? null : menuId))
+                                                            }
+                                                            onClose={() => setOpenMenuId(null)}
+                                                            items={getMenuItems(item)}
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <p className="mt-2 font-medium text-gray-900">
-                                                    {item.property_title || "—"}
-                                                </p>
 
-                                                <dl className="mt-3 space-y-1.5 text-sm">
+                                                <dl className="mt-3 space-y-1.5 text-xs">
                                                     <Row label="Seeker">{item.seeker_name || "—"}</Row>
-                                                    <Row label="Date & time">
-                                                        {formatDateTime(item.requested_date)}
-                                                    </Row>
+                                                    <Row label="Date & time">{formatDateTime(item.requested_date)}</Row>
                                                     <Row label="PVO">
                                                         {item.pvo_name || (
-                                                            <span className="text-gray-400">Unassigned</span>
+                                                            <span className="text-slate-400">Unassigned</span>
                                                         )}
                                                     </Row>
                                                 </dl>
-
-                                                <div className="mt-4 flex items-center gap-5 border-t border-gray-100 pt-3 text-sm">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => assignPvo(item)}
-                                                        className="text-blue-600 hover:text-blue-700 font-medium"
-                                                    >
-                                                        {assigned ? "Re-assign" : "Assign PVO"}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => viewInspection(item.id)}
-                                                        className="text-gray-600 hover:text-gray-800 font-medium"
-                                                    >
-                                                        View
-                                                    </button>
-                                                </div>
                                             </div>
                                         );
                                     })}
@@ -432,8 +419,8 @@ const Inspection = () => {
                         )}
 
                         {/* Pagination */}
-                        <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
-                            <p className="text-sm text-gray-500">
+                        <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                            <p className="text-xs text-slate-500">
                                 Page {page} of {totalPages}
                             </p>
                             <div className="flex items-center gap-2">
@@ -441,7 +428,7 @@ const Inspection = () => {
                                     type="button"
                                     onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                                     disabled={!hasPreviousPage || page === 1}
-                                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     Previous
                                 </button>
@@ -449,7 +436,7 @@ const Inspection = () => {
                                     type="button"
                                     onClick={() => setPage((prev) => prev + 1)}
                                     disabled={!hasNextPage}
-                                    className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+                                    className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                                 >
                                     Next
                                 </button>
@@ -462,18 +449,18 @@ const Inspection = () => {
                 {activeTab === "tenant" && (
                     <div className="grid grid-cols-1 gap-5 xl:grid-cols-3 xl:gap-6">
                         {/* Left column – Inspection cards */}
-                        <div className="xl:col-span-2 min-w-0 space-y-4">
+                        <div className="min-w-0 space-y-4 xl:col-span-2">
                             {/* Search */}
-                            <div className="bg-white rounded-xl border border-gray-200 p-4">
-                                <div className="relative w-full md:max-w-md">
+                            <div className="rounded-xl bg-white p-4 shadow-sm">
+                                <div className="relative w-full sm:max-w-xs">
                                     <Search
-                                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                                        size={18}
+                                        size={16}
+                                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                                     />
                                     <input
                                         type="text"
                                         placeholder="Search"
-                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none"
                                     />
                                 </div>
                             </div>
@@ -482,55 +469,55 @@ const Inspection = () => {
                             {tenantInspections.map((item) => (
                                 <div
                                     key={item.id}
-                                    className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 hover:shadow-md transition-shadow"
+                                    className="rounded-xl bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5"
                                 >
                                     <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
                                         {/* Image */}
                                         <img
                                             src={item.image}
                                             alt={item.title}
-                                            className="w-full h-44 sm:w-36 sm:h-28 object-cover rounded-lg flex-shrink-0"
+                                            className="h-44 w-full flex-shrink-0 rounded-lg object-cover sm:h-28 sm:w-36"
                                         />
 
                                         {/* Main info */}
-                                        <div className="flex-1 min-w-0">
+                                        <div className="min-w-0 flex-1">
                                             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                                                 <div className="min-w-0">
-                                                    <span className="text-xs text-gray-500">{item.type}</span>
-                                                    <h3 className="text-base font-semibold text-gray-900 mt-0.5">
+                                                    <span className="text-xs text-slate-500">{item.type}</span>
+                                                    <h3 className="mt-0.5 text-sm font-semibold text-slate-900">
                                                         {item.title}
                                                     </h3>
-                                                    <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
-                                                        <MapPin size={13} className="flex-shrink-0" />
+                                                    <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
+                                                        <MapPin size={12} className="flex-shrink-0" />
                                                         {item.location}
                                                     </p>
                                                 </div>
-                                                <div className="flex items-center justify-between gap-3 sm:block sm:text-right sm:flex-shrink-0">
-                                                    <p className="text-lg font-semibold text-gray-900">
+                                                <div className="flex items-center justify-between gap-3 sm:block sm:flex-shrink-0 sm:text-right">
+                                                    <p className="text-base font-bold text-slate-900">
                                                         {item.price}
-                                                        <span className="text-sm font-normal text-gray-500">
+                                                        <span className="text-xs font-normal text-slate-500">
                                                             {item.period}
                                                         </span>
                                                     </p>
-                                                    <button className="text-blue-600 text-sm font-medium flex items-center gap-1 sm:mt-1 hover:underline">
+                                                    <button className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline sm:mt-1">
                                                         View Property
-                                                        <ExternalLink size={13} />
+                                                        <ExternalLink size={12} />
                                                     </button>
                                                 </div>
                                             </div>
 
                                             {/* Specs */}
-                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-sm text-gray-600">
+                                            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-600">
                                                 <span className="flex items-center gap-1.5">
-                                                    <Bed size={15} />
+                                                    <Bed size={14} />
                                                     {item.beds} bedrooms
                                                 </span>
                                                 <span className="flex items-center gap-1.5">
-                                                    <Bath size={15} />
+                                                    <Bath size={14} />
                                                     {item.baths} bathrooms
                                                 </span>
                                                 <span className="flex items-center gap-1.5">
-                                                    <Maximize size={15} />
+                                                    <Maximize size={14} />
                                                     {item.size}
                                                 </span>
                                             </div>
@@ -538,50 +525,44 @@ const Inspection = () => {
                                     </div>
 
                                     {/* Bottom meta */}
-                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-5 pt-4 border-t border-gray-100">
+                                    <div className="mt-5 grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
                                         <div className="flex items-center gap-2.5">
-                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                                <User size={15} className="text-gray-500" />
+                                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-100">
+                                                <User size={14} className="text-slate-500" />
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="text-sm font-medium text-gray-900">
-                                                    {item.tenant}
-                                                </p>
-                                                <p className="text-xs text-gray-500">{item.tenantRole}</p>
+                                                <p className="text-xs font-semibold text-slate-900">{item.tenant}</p>
+                                                <p className="text-xs text-slate-500">{item.tenantRole}</p>
                                             </div>
                                         </div>
 
                                         <div className="flex items-center gap-2.5">
-                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                                <Calendar size={15} className="text-gray-500" />
+                                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-100">
+                                                <Calendar size={14} className="text-slate-500" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-medium text-gray-900">
-                                                    {item.date}
-                                                </p>
-                                                <p className="text-xs text-gray-500">{item.time}</p>
+                                                <p className="text-xs font-semibold text-slate-900">{item.date}</p>
+                                                <p className="text-xs text-slate-500">{item.time}</p>
                                             </div>
                                         </div>
 
                                         <div className="flex items-center gap-2.5">
-                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                                <User size={15} className="text-gray-500" />
+                                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-100">
+                                                <User size={14} className="text-slate-500" />
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="text-sm font-medium text-gray-900">
-                                                    {item.officer}
-                                                </p>
-                                                <p className="text-xs text-gray-500">{item.officerRole}</p>
+                                                <p className="text-xs font-semibold text-slate-900">{item.officer}</p>
+                                                <p className="text-xs text-slate-500">{item.officerRole}</p>
                                             </div>
                                         </div>
 
                                         <div className="flex items-start gap-2.5">
-                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                                <FileText size={15} className="text-gray-500" />
+                                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-100">
+                                                <FileText size={14} className="text-slate-500" />
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="text-sm font-medium text-gray-900">Notes</p>
-                                                <p className="text-xs text-gray-500">{item.notes}</p>
+                                                <p className="text-xs font-semibold text-slate-900">Notes</p>
+                                                <p className="text-xs text-slate-500">{item.notes}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -592,11 +573,11 @@ const Inspection = () => {
                         {/* Right column – Calendar + Upcoming */}
                         <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-1">
                             {/* Calendar */}
-                            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
-                                <h3 className="font-semibold text-gray-900 mb-4">July 2025</h3>
+                            <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+                                <h3 className="mb-4 text-sm font-bold text-slate-900">July 2025</h3>
                                 <div className="grid grid-cols-7 gap-1 text-center text-xs">
                                     {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-                                        <div key={i} className="py-1 text-gray-400 font-medium">
+                                        <div key={i} className="py-1 font-medium text-slate-400">
                                             {d}
                                         </div>
                                     ))}
@@ -606,14 +587,14 @@ const Inspection = () => {
                                         return (
                                             <div
                                                 key={day}
-                                                className={`relative py-1.5 rounded-full cursor-pointer ${isSelected
-                                                    ? "bg-gray-900 text-white"
-                                                    : "hover:bg-gray-100 text-gray-700"
+                                                className={`relative cursor-pointer rounded-full py-1.5 ${isSelected
+                                                    ? "bg-slate-900 text-white"
+                                                    : "text-slate-700 hover:bg-slate-100"
                                                     }`}
                                             >
                                                 {day}
                                                 {hasDot && !isSelected && (
-                                                    <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-500" />
+                                                    <div className="absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-blue-500" />
                                                 )}
                                             </div>
                                         );
@@ -622,8 +603,8 @@ const Inspection = () => {
                             </div>
 
                             {/* Upcoming */}
-                            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
-                                <h3 className="font-semibold text-gray-900 mb-3">Upcoming</h3>
+                            <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+                                <h3 className="mb-3 text-sm font-bold text-slate-900">Upcoming</h3>
                                 <div className="space-y-3">
                                     {[
                                         {
@@ -641,14 +622,12 @@ const Inspection = () => {
                                     ].map((item, i) => (
                                         <div
                                             key={i}
-                                            className="flex gap-3 p-3 rounded-lg bg-blue-50/60 border border-blue-100"
+                                            className="flex gap-3 rounded-lg border border-blue-100 bg-blue-50/60 p-3"
                                         >
-                                            <div className="w-1 rounded-full bg-blue-500 flex-shrink-0" />
+                                            <div className="w-1 flex-shrink-0 rounded-full bg-blue-500" />
                                             <div className="min-w-0">
-                                                <p className="text-sm font-medium text-gray-900">
-                                                    {item.title}
-                                                </p>
-                                                <p className="text-xs text-gray-500 mt-0.5">{item.time}</p>
+                                                <p className="text-xs font-semibold text-slate-900">{item.title}</p>
+                                                <p className="mt-0.5 text-xs text-slate-500">{item.time}</p>
                                             </div>
                                         </div>
                                     ))}
