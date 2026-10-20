@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { post_requests } from "../helper/AxioHelper";
+import { patch_requests, post_requests } from "../helper/AxioHelper";
 
 
 // ==================== USERS HOOK ====================
@@ -167,3 +167,34 @@ export const useApproveListing = () => {
     },
   });
 };
+
+export const useUpdateNotificationPrefs = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: {
+      email_enabled: boolean
+      push_enabled: boolean
+      activities: string
+    }) => {
+      const token = (await localStorage.getItem("pknockAdminToken")) || ""
+      return patch_requests("notifications/preferences/", body, token)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notification-prefs"] })
+    },
+  })
+}
+
+
+export const useUpdatePlatformSettings = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: any) => {
+      const token = (await localStorage.getItem("pknockAdminToken")) || ""
+      return patch_requests("payments/settings/", body, token)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["platform-settings"] })
+    },
+  })
+}

@@ -12,6 +12,7 @@ import { useGetUsers } from "../../hooks/queries/allQueries";
 type UserRecord = {
     id?: string;
     user_id?: string;
+    seeker_profile_id: string;
     display_id?: string;
     first_name?: string;
     last_name?: string;
@@ -50,7 +51,7 @@ const isUserActive = (user: UserRecord) => {
 };
 
 const getUserKey = (user: UserRecord) =>
-    user?.user_id ?? user?.id ?? user?.display_id ?? "";
+    user?.seeker_profile_id ?? user?.seeker_profile_id ?? user?.id ?? user?.display_id ?? "";
 
 const getFullName = (user?: UserRecord | null) =>
     `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim();
@@ -121,6 +122,8 @@ const Users = () => {
     const suspendMutation = useSuspendUser();
     const reactivateMutation = useReactivateUser();
 
+    console.log("Users response:", response?.data?.results); // Debugging line to check the response
+
     const users = useMemo(() => {
         const payload = response?.data ?? response;
         const list = Array.isArray(payload?.results)
@@ -183,7 +186,7 @@ const Users = () => {
         if (!selectedUser || !action || !reason) return;
 
         // Prefer user_id (accounts/users/:id), fall back to id
-        const id = selectedUser.user_id ?? selectedUser.id;
+        const id = selectedUser.seeker_profile_id ?? selectedUser.seeker_profile_id;
         if (!id) return;
 
         const mutation = action === "suspend" ? suspendMutation : reactivateMutation;
@@ -320,7 +323,7 @@ const Users = () => {
                                                             }
                                                             onClose={() => setOpenMenuId(null)}
                                                             onView={() =>
-                                                                viewUser(user?.id ?? user?.user_id)
+                                                                viewUser(user?.seeker_profile_id ?? user?.id)
                                                             }
                                                             onSuspend={() =>
                                                                 openAction(user, "suspend")
@@ -369,7 +372,7 @@ const Users = () => {
                                                         )
                                                     }
                                                     onClose={() => setOpenMenuId(null)}
-                                                    onView={() => viewUser(user?.id ?? user?.user_id)}
+                                                    onView={() => viewUser(user?.seeker_profile_id ?? user?.id)}
                                                     onSuspend={() => openAction(user, "suspend")}
                                                     onReactivate={() => openAction(user, "reactivate")}
                                                     isActive={active}

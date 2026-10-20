@@ -19,3 +19,13 @@ export const useLogout = () => {
     },
   });
 };
+
+
+export const useLogoutAll = () => {
+  return useMutation({
+    mutationFn: async () => {
+      const token = (await localStorage.getItem("pknockAdminToken")) || ""
+      return post_requests("accounts/logout-all/", {}, token)
+    },
+  })
+}

@@ -152,8 +152,6 @@ const VerificationOfficers = () => {
     const suspendMutation = useSuspendUser()
     const reactivateMutation = useReactivateUser()
 
-    console.log("staff response", staff?.data)
-
     const data = (staff?.data ?? staff) as
         | { count?: number; previous?: string | null; next?: string | null; results?: any[] }
         | any[]
@@ -334,9 +332,9 @@ const VerificationOfficers = () => {
     const handleAction = async (reason: string) => {
         if (!selectedOfficer || !action || !reason) return
 
-        // Prefer user_id (accounts/users/:id), fall back to id
-        const id = selectedOfficer.user_id || selectedOfficer.id
-        if (!id || id === "--") return
+        // Suspend/reactivate hit accounts/users/:id, so prefer user_id, fall back to id
+        const id = selectedOfficer.user_id !== "--" ? selectedOfficer.user_id : selectedOfficer.id
+        if (!id) return
 
         const mutation = action === "suspend" ? suspendMutation : reactivateMutation
         try {
@@ -435,59 +433,60 @@ const VerificationOfficers = () => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    filtered.map((officer) => (
-                                        <tr
-                                            key={officer.user_id}
-                                            className="text-xs transition-colors hover:bg-slate-50"
-                                        >
-                                            <td className="whitespace-nowrap py-4 pr-4 text-sm font-semibold text-slate-900">
-                                                {officer.name}
-                                            </td>
-                                            <td className="whitespace-nowrap py-4 pr-4 text-slate-600">
-                                                {officer.displayId}
-                                            </td>
-                                            <td className="py-4 pr-4 text-slate-600">
-                                                {officer.coverage}
-                                            </td>
-                                            <td className="py-4 pr-4">
-                                                <StatusBadge status={officer.status} />
-                                            </td>
-                                            <td className="py-4 pr-4 text-center text-slate-700">
-                                                {officer.assigned}
-                                            </td>
-                                            <td className="py-4 pr-4 text-center text-slate-700">
-                                                {officer.completed}
-                                            </td>
-                                            <td className="py-4 pr-4 text-center text-slate-700">
-                                                {officer.pending}
-                                            </td>
-                                            <td className="py-4">
-                                                <ActionsMenu
-                                                    open={openMenuId === officer.user_id}
-                                                    onToggle={() =>
-                                                        setOpenMenuId((prev) =>
-                                                            prev === officer.user_id
-                                                                ? null
-                                                                : officer.user_id
-                                                        )
-                                                    }
-                                                    onClose={() => setOpenMenuId(null)}
-                                                    onView={() =>
-                                                        navigate(
-                                                            `/admin/verification-officers/${officer.user_id}`
-                                                        )
-                                                    }
-                                                    onSuspend={() =>
-                                                        openAction(officer, "suspend")
-                                                    }
-                                                    onReactivate={() =>
-                                                        openAction(officer, "reactivate")
-                                                    }
-                                                    isActive={officer.status === "Active"}
-                                                />
-                                            </td>
-                                        </tr>
-                                    ))
+                                    filtered.map((officer) => {
+                                        const menuId = `table-${officer.id}`
+                                        return (
+                                            <tr
+                                                key={officer.id}
+                                                className="text-xs transition-colors hover:bg-slate-50"
+                                            >
+                                                <td className="whitespace-nowrap py-4 pr-4 text-sm font-semibold text-slate-900">
+                                                    {officer.name}
+                                                </td>
+                                                <td className="whitespace-nowrap py-4 pr-4 text-slate-600">
+                                                    {officer.displayId}
+                                                </td>
+                                                <td className="py-4 pr-4 text-slate-600">
+                                                    {officer.coverage}
+                                                </td>
+                                                <td className="py-4 pr-4">
+                                                    <StatusBadge status={officer.status} />
+                                                </td>
+                                                <td className="py-4 pr-4 text-center text-slate-700">
+                                                    {officer.assigned}
+                                                </td>
+                                                <td className="py-4 pr-4 text-center text-slate-700">
+                                                    {officer.completed}
+                                                </td>
+                                                <td className="py-4 pr-4 text-center text-slate-700">
+                                                    {officer.pending}
+                                                </td>
+                                                <td className="py-4">
+                                                    <ActionsMenu
+                                                        open={openMenuId === menuId}
+                                                        onToggle={() =>
+                                                            setOpenMenuId((prev) =>
+                                                                prev === menuId ? null : menuId
+                                                            )
+                                                        }
+                                                        onClose={() => setOpenMenuId(null)}
+                                                        onView={() =>
+                                                            navigate(
+                                                                `/admin/verification-officers/${officer.id}`
+                                                            )
+                                                        }
+                                                        onSuspend={() =>
+                                                            openAction(officer, "suspend")
+                                                        }
+                                                        onReactivate={() =>
+                                                            openAction(officer, "reactivate")
+                                                        }
+                                                        isActive={officer.status === "Active"}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        )
+                                    })
                                 )}
                             </tbody>
                         </table>
@@ -503,62 +502,67 @@ const VerificationOfficers = () => {
                                 />
                             </div>
                         ) : (
-                            filtered.map((officer) => (
-                                <div
-                                    key={officer.id}
-                                    className="rounded-xl border border-slate-200 p-4"
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <p className="truncate text-sm font-semibold text-slate-900">
-                                                {officer.name}
-                                            </p>
-                                            <p className="mt-0.5 text-xs text-slate-500">
-                                                {officer.displayId}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <StatusBadge status={officer.status} />
-                                            <ActionsMenu
-                                                open={openMenuId === officer.id}
-                                                onToggle={() =>
-                                                    setOpenMenuId((prev) =>
-                                                        prev === officer.id ? null : officer.id
-                                                    )
-                                                }
-                                                onClose={() => setOpenMenuId(null)}
-                                                onView={() =>
-                                                    navigate(
-                                                        `/admin/verification-officers/${officer.id}`
-                                                    )
-                                                }
-                                                onSuspend={() => openAction(officer, "suspend")}
-                                                onReactivate={() =>
-                                                    openAction(officer, "reactivate")
-                                                }
-                                                isActive={officer.status === "Active"}
-                                            />
-                                        </div>
-                                    </div>
-                                    <p className="mt-2 text-xs text-slate-600">{officer.coverage}</p>
-                                    <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-slate-50 p-3 text-center">
-                                        {[
-                                            ["Assigned", officer.assigned],
-                                            ["Completed", officer.completed],
-                                            ["Pending", officer.pending],
-                                        ].map(([label, value]) => (
-                                            <div key={label as string}>
-                                                <p className="text-sm font-semibold text-slate-900">
-                                                    {value}
+                            filtered.map((officer) => {
+                                const menuId = `card-${officer.id}`
+                                return (
+                                    <div
+                                        key={officer.id}
+                                        className="rounded-xl border border-slate-200 p-4"
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-semibold text-slate-900">
+                                                    {officer.name}
                                                 </p>
-                                                <p className="mt-0.5 text-[10px] leading-tight text-slate-500">
-                                                    {label}
+                                                <p className="mt-0.5 text-xs text-slate-500">
+                                                    {officer.displayId}
                                                 </p>
                                             </div>
-                                        ))}
+                                            <div className="flex items-center gap-2">
+                                                <StatusBadge status={officer.status} />
+                                                <ActionsMenu
+                                                    open={openMenuId === menuId}
+                                                    onToggle={() =>
+                                                        setOpenMenuId((prev) =>
+                                                            prev === menuId ? null : menuId
+                                                        )
+                                                    }
+                                                    onClose={() => setOpenMenuId(null)}
+                                                    onView={() =>
+                                                        navigate(
+                                                            `/admin/verification-officers/${officer.id}`
+                                                        )
+                                                    }
+                                                    onSuspend={() => openAction(officer, "suspend")}
+                                                    onReactivate={() =>
+                                                        openAction(officer, "reactivate")
+                                                    }
+                                                    isActive={officer.status === "Active"}
+                                                />
+                                            </div>
+                                        </div>
+                                        <p className="mt-2 text-xs text-slate-600">
+                                            {officer.coverage}
+                                        </p>
+                                        <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-slate-50 p-3 text-center">
+                                            {[
+                                                ["Assigned", officer.assigned],
+                                                ["Completed", officer.completed],
+                                                ["Pending", officer.pending],
+                                            ].map(([label, value]) => (
+                                                <div key={label as string}>
+                                                    <p className="text-sm font-semibold text-slate-900">
+                                                        {value}
+                                                    </p>
+                                                    <p className="mt-0.5 text-[10px] leading-tight text-slate-500">
+                                                        {label}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            ))
+                                )
+                            })
                         )}
                     </div>
 

@@ -1,45 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { get_requests } from "../helper/AxioHelper";
-
-
-
-// ==================== EVERY HERE IS USERS ===========================
-
-export const useGetUsers = (page = 1) => {
-    const { data, isLoading, isError, isFetched, refetch } = useQuery({
-        queryKey: ["users", page],
-        queryFn: async () => {
-            const token = (await localStorage.getItem("pknockAdminToken")) || "";
-            return get_requests(`accounts/users/?page=${page}`, token);
-        },
-    });
-
-    return {
-        users: data,
-        isLoading,
-        isError,
-        isFetched,
-        refetch,
-    };
-};
-
-export const useGetOwners = (page = 1) => {
-    const { data, isLoading, isError, isFetched, refetch } = useQuery({
-        queryKey: ["owners", page],
-        queryFn: async () => {
-            const token = (await localStorage.getItem("pknockAdminToken")) || "";
-            return get_requests(`accounts/owners/?page=${page}`, token);
-        },
-    });
-
-    return {
-        owners: data,
-        isLoading,
-        isError,
-        isFetched,
-        refetch,
-    };
-};
+// ==================== ADMIN ANALYTICS ===========================
 
 export type AdminOverviewResponse = {
     total_properties?: { value?: number; delta_pct?: number };
@@ -52,65 +13,6 @@ export type AdminOverviewResponse = {
     open_complaints?: { value?: number; delta_pct?: number };
 };
 
-export const useGetAdminOverview = () => {
-    const { data, isLoading, isError, isFetched, refetch } = useQuery({
-        queryKey: ["admin-overview"],
-        queryFn: async () => {
-            const token = (await localStorage.getItem("pknockAdminToken")) || "";
-            return get_requests("analytics/admin/overview/", token);
-        },
-    });
-
-    return {
-        overview: data?.data ?? data,
-        isLoading,
-        isError,
-        isFetched,
-        refetch,
-    };
-};
-
-// ============== GET Single User ===============
-export const useGetSingleUser = (id: string) => {
-    const { data, isLoading, isError, isFetched, refetch } = useQuery({
-        queryKey: ["users", id],
-        queryFn: async () => {
-            const token = (await localStorage.getItem("pknockAdminToken")) || "";
-            return get_requests(`accounts/users/${id}/`, token);
-        },
-    });
-
-    return {
-        userData: data,
-        isLoading,
-        isError,
-        isFetched,
-        refetch,
-    };
-};
-
-
-// ============== GET Single Owner ===============
-export const useGetSingleOwner = (id: string) => {
-    const { data, isLoading, isError, isFetched, refetch } = useQuery({
-        queryKey: ["owners", id],
-        queryFn: async () => {
-            const token = (await localStorage.getItem("pknockAdminToken")) || "";
-            return get_requests(`accounts/owners/${id}/`, token);
-        },
-    });
-
-    return {
-        ownerData: data,
-        isLoading,
-        isError,
-        isFetched,
-        refetch,
-    };
-};
-
-
-// ==================== ADMIN ANALYTICS ===========================
 
 export type RevenueSeriesResponse = {
     series: Array<{
@@ -161,6 +63,105 @@ export type RecentActivityItem = {
     target_id: string
     created_at: string
 }
+
+
+// ==================== EVERY HERE IS USERS ===========================
+
+export const useGetUsers = (page = 1) => {
+    const { data, isLoading, isError, isFetched, refetch } = useQuery({
+        queryKey: ["users", page],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || "";
+            return get_requests(`accounts/seekers/?page=${page}`, token);
+        },
+    });
+
+    return {
+        users: data,
+        isLoading,
+        isError,
+        isFetched,
+        refetch,
+    };
+};
+
+export const useGetOwners = (page = 1) => {
+    const { data, isLoading, isError, isFetched, refetch } = useQuery({
+        queryKey: ["owners", page],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || "";
+            return get_requests(`accounts/owners/?page=${page}`, token);
+        },
+    });
+
+    return {
+        owners: data,
+        isLoading,
+        isError,
+        isFetched,
+        refetch,
+    };
+};
+
+
+export const useGetAdminOverview = () => {
+    const { data, isLoading, isError, isFetched, refetch } = useQuery({
+        queryKey: ["admin-overview"],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || "";
+            return get_requests("analytics/admin/overview/", token);
+        },
+    });
+
+    return {
+        overview: data?.data ?? data,
+        isLoading,
+        isError,
+        isFetched,
+        refetch,
+    };
+};
+
+// ============== GET Single User ===============
+export const useGetSingleUser = (id: string) => {
+    const { data, isLoading, isError, isFetched, refetch } = useQuery({
+        queryKey: ["users", id],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || "";
+            return get_requests(`accounts/seekers/${id}/`, token);
+        },
+    });
+
+    return {
+        userData: data,
+        isLoading,
+        isError,
+        isFetched,
+        refetch,
+    };
+};
+
+
+// ============== GET Single Owner ===============
+export const useGetSingleOwner = (id: string) => {
+    const { data, isLoading, isError, isFetched, refetch } = useQuery({
+        queryKey: ["owners", id],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || "";
+            return get_requests(`accounts/owners/${id}/`, token);
+        },
+    });
+
+    return {
+        ownerData: data,
+        isLoading,
+        isError,
+        isFetched,
+        refetch,
+    };
+};
+
+
 
 export const useGetAdminRevenueSeries = () => {
     const { data, isLoading, isError, isFetched, refetch } = useQuery({
@@ -253,6 +254,8 @@ export const useGetAdminTopPvos = () => {
 }
 
 
+
+// ============== GET Staff ===============
 export const useGetStaff = (page = 1) => {
     const { data, isLoading, isError, isFetched, refetch } = useQuery({
         queryKey: ["staff", page],
@@ -271,6 +274,70 @@ export const useGetStaff = (page = 1) => {
     }
 }
 
+
+// ============== GET Single Staff ===============
+export const useGetSingleStaff = (id: string) => {
+    const { data, isLoading, isError, isFetched, refetch } = useQuery({
+        queryKey: ["staff", id],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || "";
+            return get_requests(`accounts/staff/${id}/`, token);
+        },
+    });
+
+    return {
+        staffData: data,
+        isLoading,
+        isError,
+        isFetched,
+        refetch,
+    };
+};
+
+// ============== GET PVO Inspections ===============
+export const useGetPvoInspections = (staffId: string, page = 1) => {
+    const { data, isLoading, isError, refetch } = useQuery({
+        queryKey: ["pvo-inspections", staffId, page],
+        enabled: !!staffId,
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || ""
+            return get_requests(
+                `verification/inspections/?staff_id=${staffId}&page=${page}`,
+                token
+            )
+        },
+    })
+
+    return { inspections: data, isLoading, isError, refetch }
+}
+
+// ============== GET PVO Overview ===============
+export const useGetPvoOverview = (staffId: string) => {
+    const { data, isLoading, isError, refetch } = useQuery({
+        queryKey: ["pvo-overview", staffId],
+        enabled: !!staffId,
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || ""
+            return get_requests(`analytics/pvo/overview/?pvo_id=${staffId}`, token)
+        },
+    })
+
+    return { overview: data, isLoading, isError, refetch }
+}
+
+
+export const useGetInspection = (id?: string) => {
+    const { data, isLoading, isError, refetch } = useQuery({
+        queryKey: ["inspection", id],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || ""
+            return get_requests(`verification/inspections/${id}/`, token)
+        },
+        enabled: Boolean(id),
+    })
+
+    return { inspection: data, isLoading, isError, refetch }
+}
 
 // ==================== PROPERTIES ===========================
 
@@ -424,3 +491,46 @@ export const useGetProperty = (id?: string) => {
         refetch,
     };
 };
+
+
+export const useGetSessions = (page = 1, pageSize = 10) => {
+    const { data, isLoading, isError, refetch } = useQuery({
+        queryKey: ["sessions", page, pageSize],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || ""
+            return get_requests(`accounts/sessions/?page=${page}&page_size=${pageSize}`, token)
+        },
+    })
+
+    return { sessions: data, isLoading, isError, refetch }
+}
+
+// ============== GET Notification Preferences ===============
+export const useGetNotificationPrefs = () => {
+    const { data, isLoading, isError, refetch } = useQuery({
+        queryKey: ["notification-prefs"],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || ""
+            return get_requests("notifications/preferences/", token)
+        },
+    })
+
+    return { prefs: data, isLoading, isError, refetch }
+}
+
+export const useGetPlatformSettings = () => {
+    const query = useQuery({
+        queryKey: ["platform-settings"],
+        queryFn: async () => {
+            const token = (await localStorage.getItem("pknockAdminToken")) || ""
+            return get_requests("payments/settings/", token)
+        },
+    })
+
+    return {
+        settings: query.data?.data ?? query.data,
+        isLoading: query.isLoading,
+        isError: query.isError,
+        refetch: query.refetch,
+    }
+}

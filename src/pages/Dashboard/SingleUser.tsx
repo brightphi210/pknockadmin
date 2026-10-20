@@ -1,17 +1,23 @@
-import {
-    ArrowLeft,
-    CheckCircle2,
-    Mail,
-    MapPin,
-    Phone,
-    Star,
-} from "lucide-react";
+import { ArrowLeft, Ban, CheckCircle2, Mail, MapPin, Phone, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ConfirmModal from "../../components/UI/ConfirmModal";
+import { useToast } from "../../components/UI/Toast";
+import { useReactivateUser, useSuspendUser } from "../../hooks/mutations/allMutation";
+import { parseApiError } from "../../hooks/parseapierror";
 import { useGetSingleUser } from "../../hooks/queries/allQueries";
 
-const formatDate = (value?: string) => {
+type Inspection = {
+    id: string;
+    display_id?: string;
+    property_id?: string;
+    property_title?: string;
+    status?: string;
+    requested_date?: string;
+    created_at?: string;
+};
+
+const formatDate = (value?: string | null) => {
     if (!value) return "N/A";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
@@ -25,9 +31,22 @@ const formatDate = (value?: string) => {
 const normalizeText = (value?: string | null) =>
     value && value.trim() ? value : "N/A";
 
+const normalizeStatus = (status?: string | null) => {
+    if (!status) return "Not Verified";
+    return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+const kycStyles: Record<string, string> = {
+    Verified: "bg-green-100 text-green-700",
+    Approved: "bg-green-100 text-green-700",
+    Pending: "bg-amber-100 text-amber-700",
+    Rejected: "bg-red-100 text-red-700",
+    "Not Verified": "bg-slate-100 text-slate-700",
+};
+
 const EmptyState = ({ title, description }: { title: string; description: string }) => (
-    <div className="flex min-h-[360px] items-center justify-center p-6">
-        <div className="w-full max-w-lg rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
+    <div className="flex min-h-80 items-center justify-center p-6">
+        <div className="w-full max-w-md bg-white px-6 py-10 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-lg font-semibold text-slate-700">
                 !
             </div>
@@ -37,16 +56,39 @@ const EmptyState = ({ title, description }: { title: string; description: string
     </div>
 );
 
+const Field = ({
+    label,
+    value,
+    className = "",
+}: {
+    label: string;
+    value: string;
+    className?: string;
+}) => (
+    <div className={`min-w-0 ${className}`}>
+        <p className="text-[10px] uppercase tracking-wide text-slate-400">{label}</p>
+        <p className="mt-1 break-all text-xs font-medium text-slate-800">{value}</p>
+    </div>
+);
+
 const SingleUser = () => {
     const navigate = useNavigate();
+    const toast = useToast();
     const { id } = useParams<{ id: string }>();
     const [activeTab, setActiveTab] = useState<"overview" | "inspections">("overview");
-    const [showSuspendModal, setShowSuspendModal] = useState(false);
-    const [showReactivateModal, setShowReactivateModal] = useState(false);
-    const [isSuspended, setIsSuspended] = useState(false);
+    const [action, setAction] = useState<"suspend" | "reactivate" | null>(null);
+    const [actionError, setActionError] = useState("");
 
-    const { userData, isLoading, isError } = useGetSingleUser(id || "");
-    const user = userData?.data ?? userData ?? {};
+    const { userData, isLoading, isError, refetch } = useGetSingleUser(id || "");
+    const suspendMutation = useSuspendUser();
+    const reactivateMutation = useReactivateUser();
+
+    const data = userData?.data ?? userData ?? {};
+    const profile = data?.profile ?? {};
+    const emailCard = data?.email_card ?? null;
+    const kycCard = data?.kyc_card ?? null;
+    const stats = data?.stats ?? {};
+    const inspections: Inspection[] = Array.isArray(data?.inspections) ? data.inspections : [];
 
     if (!id) {
         return (
@@ -59,7 +101,7 @@ const SingleUser = () => {
 
     if (isLoading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6 text-sm text-slate-500">
+            <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6 text-xs text-slate-500">
                 Loading user details...
             </div>
         );
@@ -74,7 +116,7 @@ const SingleUser = () => {
         );
     }
 
-    if (!user || Object.keys(user).length === 0) {
+    if (!profile || Object.keys(profile).length === 0) {
         return (
             <EmptyState
                 title="No user data available"
@@ -84,223 +126,248 @@ const SingleUser = () => {
     }
 
     const fullName =
-        `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "Unknown User";
-    const kycStatus = user?.kyc_status ? user.kyc_status : "Pending";
+        `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim() || "Unknown User";
+    const kycLabel = normalizeStatus(kycCard?.status);
+    const isActive =
+        typeof profile.is_active === "boolean"
+            ? profile.is_active
+            : profile.account_status !== "suspended";
+    const emailVerified = Boolean(emailCard?.verified_via);
+    const phoneVerified = Boolean(profile.phone_verified);
+    const inspectionCount = Number(stats.inspections_requested ?? inspections.length ?? 0);
+
+    const openAction = (type: "suspend" | "reactivate") => {
+        setActionError("");
+        setAction(type);
+    };
+
+    const closeAction = () => {
+        if (suspendMutation.isPending || reactivateMutation.isPending) return;
+        setAction(null);
+        setActionError("");
+    };
+
+    const handleAction = async (reason: string) => {
+        if (!action || !reason) return;
+        const profileId = profile.seeker_profile_id ?? id;
+        const mutation = action === "suspend" ? suspendMutation : reactivateMutation;
+
+        try {
+            await mutation.mutateAsync({ id: profileId, reason });
+            toast.success(action === "suspend" ? "Account suspended" : "Account reactivated", {
+                message: fullName,
+            });
+            setAction(null);
+            setActionError("");
+            refetch();
+        } catch (err) {
+            const parsed = parseApiError(err, `Failed to ${action} account.`);
+            setActionError(parsed.message);
+            toast.error(`Could not ${action} account`, { message: parsed.message });
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
+            <div className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+                    <div className="flex min-w-0 items-start gap-3 sm:gap-4">
                         <button
                             onClick={() => navigate("/admin/users")}
-                            className="p-1.5 hover:bg-gray-100 rounded-lg flex-shrink-0"
+                            className="shrink-0 rounded-lg p-1.5 hover:bg-slate-100"
                             aria-label="Back to users"
                         >
-                            <ArrowLeft size={20} className="text-gray-600" />
+                            <ArrowLeft size={18} className="text-slate-600" />
                         </button>
 
-                        <div className="flex items-start gap-3 min-w-0">
-                            <img
-                                src="https://i.pravatar.cc/100?img=33"
-                                alt={fullName}
-                                className="w-12 h-12 rounded-full object-cover flex-shrink-0"
-                            />
+                        <div className="flex min-w-0 items-start gap-3">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
+                                {(profile.first_name?.[0] ?? "").toUpperCase()}
+                                {(profile.last_name?.[0] ?? "").toUpperCase()}
+                            </div>
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                    <h1 className="text-lg font-semibold text-gray-900">
+                                    <h1 className="text-xl font-extrabold text-slate-900 sm:text-2xl">
                                         {fullName}
                                     </h1>
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                                        {kycStatus}
+                                    <span
+                                        className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${kycStyles[kycLabel] || "bg-gray-100 text-gray-600"
+                                            }`}
+                                    >
+                                        {kycLabel}
                                     </span>
-                                </div>
-                                <p className="text-sm text-gray-500">
-                                    {user?.display_id || user?.id || "User"} · Joined{" "}
-                                    {formatDate(user?.registered_at || user?.last_seen_at)}
-                                </p>
-                                <div className="flex items-center gap-1 mt-0.5">
-                                    {[1, 2, 3, 4, 5].map((i) => (
-                                        <Star
-                                            key={i}
-                                            size={14}
-                                            className={
-                                                i <= 4
-                                                    ? "fill-amber-400 text-amber-400"
-                                                    : "text-gray-300"
-                                            }
+                                    <span
+                                        className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${isActive
+                                            ? "bg-green-100 text-green-700"
+                                            : "bg-amber-100 text-amber-700"
+                                            }`}
+                                    >
+                                        <span
+                                            className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-green-500" : "bg-amber-500"
+                                                }`}
                                         />
-                                    ))}
-                                    <span className="text-sm text-gray-600 ml-1">
-                                        4.9 rating
+                                        {isActive ? "Active" : "Suspended"}
                                     </span>
                                 </div>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    {profile.display_id || "User"} · Joined{" "}
+                                    {formatDate(profile.member_since)}
+                                </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 md:flex-shrink-0">
-                        <button className="flex-1 md:flex-none px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-lg">
+                    <div className="flex items-center gap-3 md:shrink-0">
+                        <button className="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800 md:flex-none">
                             Approve KYC
                         </button>
-                        {isSuspended ? (
+                        {isActive ? (
                             <button
-                                onClick={() => setShowReactivateModal(true)}
-                                className="flex-1 md:flex-none px-4 py-2 border border-green-200 text-green-700 hover:bg-green-50 text-sm font-medium rounded-lg"
+                                onClick={() => openAction("suspend")}
+                                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 md:flex-none"
                             >
-                                Reactivate
+                                <Ban size={14} /> Suspend
                             </button>
                         ) : (
                             <button
-                                onClick={() => setShowSuspendModal(true)}
-                                className="flex-1 md:flex-none justify-center px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium rounded-lg flex items-center gap-1.5"
+                                onClick={() => openAction("reactivate")}
+                                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-green-200 px-3 py-2 text-xs font-medium text-green-700 hover:bg-green-50 md:flex-none"
                             >
-                                <span>⊘</span> Suspend
+                                <RotateCcw size={14} /> Reactivate
                             </button>
                         )}
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-4 text-sm text-gray-600">
+                <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-600">
                     <div className="flex items-center gap-1.5 break-all">
-                        <Mail size={16} className="flex-shrink-0" />{" "}
-                        {normalizeText(user?.email)}
+                        <Mail size={14} className="shrink-0" /> {normalizeText(profile.email)}
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <Phone size={16} className="flex-shrink-0" />{" "}
-                        {normalizeText(user?.phone)}
+                        <Phone size={14} className="shrink-0" /> {normalizeText(profile.phone)}
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <MapPin size={16} className="flex-shrink-0" />{" "}
-                        {normalizeText(user?.state_of_origin)}
+                        <MapPin size={14} className="shrink-0" />{" "}
+                        {normalizeText(profile.current_address || profile.state_of_origin)}
                     </div>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="px-4 sm:px-6 pt-5">
-                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-full sm:w-fit">
-                    <button
-                        onClick={() => setActiveTab("overview")}
-                        className={`flex-1 sm:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === "overview"
-                            ? "bg-gray-900 text-white"
-                            : "text-gray-600 hover:text-gray-900"
-                            }`}
-                    >
-                        Overview
-                    </button>
-                    <button
-                        onClick={() => setActiveTab("inspections")}
-                        className={`flex-1 sm:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === "inspections"
-                            ? "bg-gray-900 text-white"
-                            : "text-gray-600 hover:text-gray-900"
-                            }`}
-                    >
-                        Inspections
-                    </button>
+            <div className="px-4 pt-5 sm:px-6">
+                <div className="flex w-full gap-1 rounded-lg bg-slate-100 p-1 sm:w-fit">
+                    {(["overview", "inspections"] as const).map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`flex-1 rounded-md px-4 py-1.5 text-xs font-medium capitalize transition-colors sm:flex-none ${activeTab === tab
+                                ? "bg-slate-900 text-white"
+                                : "text-slate-600 hover:text-slate-900"
+                                }`}
+                        >
+                            {tab}
+                        </button>
+                    ))}
                 </div>
             </div>
 
             {/* Content */}
-            <div className="px-4 sm:px-6 py-5">
+            <div className="px-4 py-5 sm:px-6">
                 {activeTab === "overview" && (
                     <div className="grid grid-cols-1 gap-5 xl:grid-cols-3 xl:gap-6">
-                        <div className="xl:col-span-2 space-y-5 min-w-0">
-                            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-                                    <div>
-                                        <p className="text-sm text-gray-500">First Name</p>
-                                        <p className="font-medium text-gray-900 mt-0.5">
-                                            {normalizeText(user?.first_name)}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">Last Name</p>
-                                        <p className="font-medium text-gray-900 mt-0.5">
-                                            {normalizeText(user?.last_name)}
-                                        </p>
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-sm text-gray-500">Email Address</p>
-                                        <p className="font-medium text-gray-900 mt-0.5 break-all">
-                                            {normalizeText(user?.email)}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">Phone Number</p>
-                                        <p className="font-medium text-gray-900 mt-0.5">
-                                            {normalizeText(user?.phone)}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">Gender</p>
-                                        <p className="font-medium text-gray-900 mt-0.5">
-                                            {normalizeText(user?.gender)}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">Date of Birth</p>
-                                        <p className="font-medium text-gray-900 mt-0.5">
-                                            {formatDate(user?.date_of_birth)}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">State of Origin</p>
-                                        <p className="font-medium text-gray-900 mt-0.5">
-                                            {normalizeText(user?.state_of_origin)}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-gray-500">Nationality</p>
-                                        <p className="font-medium text-gray-900 mt-0.5">
-                                            {normalizeText(user?.nationality)}
-                                        </p>
-                                    </div>
-                                    <div className="sm:col-span-2">
-                                        <p className="text-sm text-gray-500">Member Since</p>
-                                        <p className="font-medium text-gray-900 mt-0.5">
-                                            {formatDate(user?.registered_at)}
-                                        </p>
-                                    </div>
+                        <div className="min-w-0 space-y-5 xl:col-span-2">
+                            <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+                                <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+                                    <Field label="First Name" value={normalizeText(profile.first_name)} />
+                                    <Field label="Last Name" value={normalizeText(profile.last_name)} />
+                                    <Field label="Email Address" value={normalizeText(profile.email)} />
+                                    <Field label="Phone Number" value={normalizeText(profile.phone)} />
+                                    <Field label="Gender" value={normalizeText(profile.gender)} />
+                                    <Field label="Date of Birth" value={formatDate(profile.date_of_birth)} />
+                                    <Field
+                                        label="State of Origin"
+                                        value={normalizeText(profile.state_of_origin)}
+                                    />
+                                    <Field label="Nationality" value={normalizeText(profile.nationality)} />
+                                    <Field
+                                        label="Current Address"
+                                        value={normalizeText(profile.current_address)}
+                                    />
+                                    <Field label="Member Since" value={formatDate(profile.member_since)} />
+                                    <Field
+                                        label="Budget Range"
+                                        value={
+                                            profile.price_min != null && profile.price_max != null
+                                                ? `₦${Number(profile.price_min).toLocaleString("en-NG")} – ₦${Number(
+                                                    profile.price_max
+                                                ).toLocaleString("en-NG")}`
+                                                : "N/A"
+                                        }
+                                    />
+                                    <Field
+                                        label="Inspections Requested"
+                                        value={String(inspectionCount)}
+                                    />
+                                    <Field className="sm:col-span-2" label="Bio" value={normalizeText(profile.bio)} />
                                 </div>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-1">
-                            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
-                                <div className="flex items-center justify-between gap-2 mb-3">
+                            <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+                                <div className="mb-3 flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-2">
-                                        <CheckCircle2 size={18} className="text-green-600" />
-                                        <span className="font-medium text-gray-900">
+                                        <CheckCircle2
+                                            size={16}
+                                            className={emailVerified ? "text-green-600" : "text-slate-400"}
+                                        />
+                                        <span className="text-sm font-semibold text-slate-900">
                                             Email Address
                                         </span>
                                     </div>
-                                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                        {user?.email_verified ? "Verified" : "Pending"}
+                                    <span
+                                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${emailVerified
+                                            ? "bg-green-100 text-green-700"
+                                            : "bg-amber-100 text-amber-700"
+                                            }`}
+                                    >
+                                        {emailVerified ? "Verified" : "Pending"}
                                     </span>
                                 </div>
-                                <p className="text-sm text-gray-500">Verified via OTP</p>
-                                <p className="text-sm font-medium text-gray-900 mt-1 break-all">
-                                    {normalizeText(user?.email)}
+                                <p className="text-xs text-slate-500">
+                                    {emailVerified
+                                        ? `Verified via ${normalizeStatus(emailCard?.verified_via)}`
+                                        : "Not yet verified"}
+                                </p>
+                                <p className="mt-1 break-all text-xs font-medium text-slate-800">
+                                    {normalizeText(emailCard?.email ?? profile.email)}
                                 </p>
                             </div>
 
-                            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
-                                <div className="flex items-center justify-between gap-2 mb-3">
+                            <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+                                <div className="mb-3 flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-2">
-                                        <CheckCircle2 size={18} className="text-blue-600" />
-                                        <span className="font-medium text-gray-900">
+                                        <CheckCircle2
+                                            size={16}
+                                            className={phoneVerified ? "text-green-600" : "text-slate-400"}
+                                        />
+                                        <span className="text-sm font-semibold text-slate-900">
                                             Phone Number
                                         </span>
                                     </div>
-                                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                                        {user?.phone_verified ? "Verified" : "Pending"}
+                                    <span
+                                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${phoneVerified
+                                            ? "bg-green-100 text-green-700"
+                                            : "bg-amber-100 text-amber-700"
+                                            }`}
+                                    >
+                                        {phoneVerified ? "Verified" : "Pending"}
                                     </span>
                                 </div>
-                                <p className="text-sm text-gray-500">Phone verification status</p>
-                                <p className="text-sm font-medium text-gray-900 mt-1 break-all">
-                                    {normalizeText(user?.phone)}
+                                <p className="text-xs text-slate-500">Phone verification status</p>
+                                <p className="mt-1 break-all text-xs font-medium text-slate-800">
+                                    {normalizeText(profile.phone)}
                                 </p>
                             </div>
                         </div>
@@ -308,44 +375,95 @@ const SingleUser = () => {
                 )}
 
                 {activeTab === "inspections" && (
-                    <div className="bg-white rounded-xl border border-gray-200 p-6 sm:p-8 text-center text-gray-500">
-                        {Number(user?.inspection_count ?? 0) > 0
-                            ? `${user.inspection_count} inspections recorded for this user.`
-                            : "No inspection records found for this user yet."}
+                    <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+                        {inspections.length === 0 ? (
+                            <p className="py-6 text-center text-xs text-slate-500">
+                                No inspection records found for this user yet.
+                            </p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-150 border-collapse">
+                                    <thead>
+                                        <tr className="whitespace-nowrap border-b border-slate-100 text-left text-xs font-medium text-slate-500">
+                                            <th className="pb-3 pr-4 font-medium">Inspection ID</th>
+                                            <th className="pb-3 pr-4 font-medium">Property</th>
+                                            <th className="pb-3 pr-4 font-medium">Requested Date</th>
+                                            <th className="pb-3 pr-4 font-medium">Created</th>
+                                            <th className="pb-3 font-medium">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {inspections.map((item) => (
+                                            <tr key={item.id} className="text-xs hover:bg-slate-50">
+                                                <td className="whitespace-nowrap py-4 pr-4 text-slate-600">
+                                                    {item.display_id || "—"}
+                                                </td>
+                                                <td className="py-4 pr-4 text-sm font-semibold text-slate-900">
+                                                    {item.property_title || "—"}
+                                                </td>
+                                                <td className="whitespace-nowrap py-4 pr-4 text-slate-500">
+                                                    {formatDate(item.requested_date)}
+                                                </td>
+                                                <td className="whitespace-nowrap py-4 pr-4 text-slate-500">
+                                                    {formatDate(item.created_at)}
+                                                </td>
+                                                <td className="py-4">
+                                                    <span className="inline-flex whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                                                        {normalizeStatus(item.status)}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
 
             <ConfirmModal
-                open={showSuspendModal}
-                onClose={() => setShowSuspendModal(false)}
-                onConfirm={() => {
-                    setIsSuspended(true);
-                    setShowSuspendModal(false);
-                }}
-                title="Suspend Account"
-                description="The user will be blocked from the platform and notified by email."
-                icon={<span className="text-2xl text-red-600">⊘</span>}
+                open={action === "suspend"}
+                onClose={closeAction}
+                onConfirm={handleAction}
                 tone="danger"
-                confirmLabel="Suspend Account"
+                icon={<Ban size={26} />}
+                title="Suspend Account"
+                description={
+                    <>
+                        Suspending{" "}
+                        <span className="font-medium text-slate-800">{fullName}</span>
+                        ’s account will block them from signing in.
+                    </>
+                }
                 reasonLabel="Reason for suspension"
-                reasonPlaceholder="State the reason for suspension"
+                reasonPlaceholder="e.g. Multiple complaints received, pending investigation…"
+                confirmLabel="Suspend Account"
+                loadingLabel="Suspending…"
+                loading={suspendMutation.isPending}
+                error={actionError}
             />
 
             <ConfirmModal
-                open={showReactivateModal}
-                onClose={() => setShowReactivateModal(false)}
-                onConfirm={() => {
-                    setIsSuspended(false);
-                    setShowReactivateModal(false);
-                }}
-                title="Reactivate Account"
-                description="The user's account will be reactivated and can perform all activities on the platform."
-                icon={<span className="text-2xl text-emerald-600">👍</span>}
+                open={action === "reactivate"}
+                onClose={closeAction}
+                onConfirm={handleAction}
                 tone="success"
-                confirmLabel="Reactivate Account"
+                icon={<RotateCcw size={26} />}
+                title="Reactivate Account"
+                description={
+                    <>
+                        Reactivating{" "}
+                        <span className="font-medium text-slate-800">{fullName}</span>
+                        ’s account will restore their access.
+                    </>
+                }
                 reasonLabel="Reason for reactivating"
-                reasonPlaceholder="State the reason for reactivating"
+                reasonPlaceholder="e.g. Investigation completed, no further issues found…"
+                confirmLabel="Reactivate Account"
+                loadingLabel="Reactivating…"
+                loading={reactivateMutation.isPending}
+                error={actionError}
             />
         </div>
     );

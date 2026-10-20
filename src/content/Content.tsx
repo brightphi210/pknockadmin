@@ -7,6 +7,7 @@ import Payments from "../pages/Dashboard/Payments";
 import Property from "../pages/Dashboard/Property";
 import PropertyOwners from "../pages/Dashboard/PropertyOwners";
 import Settings from "../pages/Dashboard/Settings";
+import SingleInspection from "../pages/Dashboard/SingleInspection";
 import SingleProperty from "../pages/Dashboard/SingleProperty";
 import SinglePropertyOwners from "../pages/Dashboard/SinglePropertyOwners";
 import SingleUser from "../pages/Dashboard/SingleUser";
@@ -37,6 +38,7 @@ const Content = () => {
                     element={<SingleVerificationOfficer />}
                 />
                 <Route path="/admin/inspections" element={<Inspection />} />
+                <Route path="/admin/inspections/:id" element={<SingleInspection />} />
 
                 {/* New routes */}
                 <Route path="/admin/users" element={<Users />} />
