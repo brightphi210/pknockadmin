@@ -198,3 +198,105 @@ export const useUpdatePlatformSettings = () => {
     },
   })
 }
+
+
+
+export const useVerifyOtp = () => {
+  return useMutation({
+    mutationFn: async (body: any) => {
+      const token = (await localStorage.getItem("pknockOwnerToken")) || "";
+      return post_requests("accounts/otp/verify/", body, token);
+    },
+  });
+};
+
+// POST accounts/otp/request/   body: { channel: "phone" | "email", phone?: string }
+// !! ASSUMED endpoint: the spec only lists otp/verify/. Change the path to your real "send OTP" route.
+export const useRequestOtp = () => {
+  return useMutation({
+    mutationFn: async (body: any) => {
+      const token = (await localStorage.getItem("pknockOwnerToken")) || "";
+      return post_requests("accounts/otp/request/", body, token);
+    },
+  });
+};
+
+// ============== Password ===============
+// POST accounts/password/change/   body: { current_password, new_password }
+export const useChangePassword = () => {
+  return useMutation({
+    mutationFn: async (body: any) => {
+      const token = (await localStorage.getItem("pknockOwnerToken")) || "";
+      return post_requests("accounts/password/change/", body, token);
+    },
+  });
+};
+
+// ============== KYC ===============
+// POST accounts/kyc/submit/   multipart: id_document_type, id_document_file (owners/staff) | facial_image (seekers)
+export const useSubmitKyc = () => {
+  return useMutation({
+    mutationFn: async (body: any) => {
+      const token = (await localStorage.getItem("pknockOwnerToken")) || "";
+      return post_requests("accounts/kyc/submit/", body, token);
+    },
+  });
+};
+
+// ============== Bank accounts ===============
+// POST accounts/bank-accounts/   body: { bank_name, bank_code, account_number }
+export const useCreateBankAccount = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: any) => {
+      const token = (await localStorage.getItem("pknockOwnerToken")) || "";
+      return post_requests("accounts/bank-accounts/", body, token);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
+    },
+  });
+};
+
+// ============== Two-factor (TOTP) ===============
+// POST accounts/totp/enroll/  -> { provisioning_uri, qr_svg, backup_codes[10] }  (400 if already active)
+export const useEnrollTotp = () => {
+  return useMutation({
+    mutationFn: async () => {
+      const token = (await localStorage.getItem("pknockOwnerToken")) || "";
+      return post_requests("accounts/totp/enroll/", {}, token);
+    },
+  });
+};
+
+// POST accounts/totp/confirm/   body: { code }
+export const useConfirmTotp = () => {
+  return useMutation({
+    mutationFn: async (body: any) => {
+      const token = (await localStorage.getItem("pknockOwnerToken")) || "";
+      return post_requests("accounts/totp/confirm/", body, token);
+    },
+  });
+};
+
+// POST accounts/totp/verify/   body: { challenge_token, code }   (login-time 2FA step)
+export const useVerifyTotp = () => {
+  return useMutation({
+    mutationFn: async (body: any) => {
+      const token = (await localStorage.getItem("pknockOwnerToken")) || "";
+      return post_requests("accounts/totp/verify/", body, token);
+    },
+  });
+};
+
+// accounts/totp/   body: { active, password?, code }
+//   disable: { active: false, password, code }   enable again: { active: true, code }
+// !! HTTP method ASSUMED to be PATCH (the spec doesn't say). Switch to post_requests if the API expects POST.
+export const useToggleTotp = () => {
+  return useMutation({
+    mutationFn: async (body: any) => {
+      const token = (await localStorage.getItem("pknockOwnerToken")) || "";
+      return patch_requests("accounts/totp/", body, token);
+    },
+  });
+};

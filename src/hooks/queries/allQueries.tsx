@@ -447,8 +447,6 @@ export const useGetNotifications = (page = 1) => {
 
 export const useUnreadNotificationCount = () => {
     const { data } = useQuery({
-        // same key as page 1 of the Notifications page, so they share one cache
-        // entry and the badge updates when notifications are marked as read
         queryKey: ["notifications", 1],
         queryFn: async () => {
             const token = (await localStorage.getItem("pknockAdminToken")) || "";
@@ -534,3 +532,5 @@ export const useGetPlatformSettings = () => {
         refetch: query.refetch,
     }
 }
+
+
